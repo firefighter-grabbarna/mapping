@@ -4,21 +4,51 @@
 #include <cstring>
 #include <iostream>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <termios.h>
 
 #include "util.hpp"
 
+static void violation(std::string got, std::string number) {
+    char buf[512];
+    snprintf(buf, sizeof(buf), "protocol violation (%s), got '%s'", number.c_str(), got.c_str());
+    panic(buf);
+}
+static void ensureStr(std::string got, std::string expected, std::string number) {
+    if (got != expected) {
+        violation(got, number);
+    }
+}
+static void ensure(bool condition, std::string number) {
+    if (!condition) {
+        char buf[512];
+        snprintf(buf, sizeof(buf), "protocol violation (%s)", number.c_str());
+        panic(buf);
+    }
+}
 
 Lidar::Lidar(const char *filename) {
-    this->fd = open(filename, O_RDWR);
+    this->fd = open(filename, O_RDWR | O_NOCTTY | O_SYNC);
     if (this->fd == -1) {
         std::perror("Opening serial failed");
         std::exit(1);
     }
+
+    struct termios term;
+	tcgetattr(fd, &term);
+
+	term.c_cflag |= CS8;
+	term.c_oflag &= ~(ONLCR | ONOCR | OCRNL | OLCUC);
+	term.c_lflag &= ~(ECHO | ICANON);
+	term.c_iflag &= ~(INPCK | ISTRIP);
+
+	term.c_cc[VMIN] = 0;
+	term.c_cc[VTIME] = 0;
+
+	tcsetattr(fd, TCSAFLUSH, &term);
 
     // Clear the serial communication
     this->output("\n"); //< Ensure there is no partially sent command
@@ -38,15 +68,15 @@ Lidar::Lidar(const char *filename) {
 
     // Initialize the protocol
     auto initRes = this->query("SCIP2.0");
-    assert(initRes.size() == 2, "protocol violation (1a)");
-    assert(initRes[0] == "SCIP2.0", "protocol violation (1b)");
-    //assert(initRes[1] == "0", "protocol violation (1c)");
+    ensure(initRes.size() == 2, "1a");
+    ensureStr(initRes[0], "SCIP2.0", "1b");
+    //ensureStr(initRes[1], "0", "1c");
 
     // Request parameters
     auto paramRes = this->query("PP");
-    assert(paramRes.size() >= 2, "protocol violation (2a)");
-    assert(paramRes[0] == "PP", "protocol violation (2b)");
-    assert(paramRes[1] == "00P", "protocol violation (2c)");
+    ensure(paramRes.size() >= 2, "2a");
+    ensureStr(paramRes[0], "PP", "2b");
+    ensureStr(paramRes[1], "00P", "2c");
 
     // Read all parameters
     for (size_t i = 2; i < paramRes.size(); i++) {
@@ -54,9 +84,9 @@ Lidar::Lidar(const char *filename) {
 
         size_t idx_1 = line.find(':');
         size_t idx_2 = line.find(';');
-        assert(idx_1 < line.size(), "protocol violation (2d)");
-        assert(idx_2 < line.size(), "protocol violation (2e)");
-        assert(idx_1 < idx_2, "protocol violation (2f)");
+        ensure(idx_1 < line.size(), "2d");
+        ensure(idx_2 < line.size(), "2e");
+        ensure(idx_1 < idx_2, "2f");
 
         std::string key = line.substr(0, idx_1);
         std::string value = line.substr(idx_1 + 1, idx_2 - idx_1 - 1);
@@ -74,9 +104,11 @@ Lidar::Lidar(const char *filename) {
         << "; R: " << this->rpm << std::endl;
     
     auto laserRes = this->query("BM");
-    assert(laserRes.size() == 2, "protocol violation (3a)");
-    assert(laserRes[0] == "BM", "protocol violation (3b)");
-    assert((laserRes[1] == "00P") || (laserRes[1] == "02R"), "protocol violation (3c)");
+    ensure(laserRes.size() == 2, "3a");
+    ensureStr(laserRes[0], "BM", "3b");
+    if ((laserRes[1] != "00P") && (laserRes[1] != "02R")) {
+        violation(laserRes[1], "3c");
+    }
 }
 
 Lidar::~Lidar() {
@@ -90,9 +122,9 @@ std::vector<int> Lidar::scan() {
     snprintf(query, sizeof(query), "GD%04d%04d01", this->amin, this->amax);
     auto scanRes = this->query(query);
 
-    assert(scanRes.size() > 3, "protocol violation (4a)");
-    assert(scanRes[0] == query, "protocol violation (4b)");
-    assert(scanRes[1] == "00P", "protocol violation (4c)");
+    ensure(scanRes.size() > 3, "4a");
+    ensureStr(scanRes[0], query, "4b");
+    ensureStr(scanRes[1], "00P", "4c");
 
     // Concatenate the encoded data
     std::string data;

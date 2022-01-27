@@ -53,8 +53,8 @@ class Lidar:
         self.laser_on()
 
         response = self.query("GD" + self.params["AMIN"].zfill(4) + self.params["AMAX"].zfill(4) + "01")
-        
-        print("Timestamp:", self.decode_number(response[2]))
+
+        print("Timestamp:", self.decode_number(response[2][:-1]))
 
         data = ""
         for line in response[3:]:

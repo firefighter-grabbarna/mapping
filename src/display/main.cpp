@@ -13,7 +13,7 @@ const char* windowName = "Firefighter";
 void redraw(Window &window, const std::vector<int> &values) {
     int diagonal = sqrt(window.width * window.width + window.height * window.height);
 
-    float max_dist = 2000.0;
+    float max_dist = 5000.0;
     float scale = max_dist / (diagonal / 2);
 
     for (int y = 0; y < window.height; y++) {
@@ -27,12 +27,12 @@ void redraw(Window &window, const std::vector<int> &values) {
             if (index >= values.size()) index = values.size() - 1;
 
             int value = values[index];
-            if (value < 200) value = -1;
+            //if (value < 200) value = 0;
 
             if (value == -1) {
                 window.put(x, y, 255, 0, 0);
             } else if (value < 200) {
-                window.put(x, y, 0, 0, 0);
+                window.put(x, y, 127, 127, 127);
             } else if (dist > value / scale + 5) {
                 window.put(x, y, 127, 127, 127);
             } else if (dist > value / scale) {
