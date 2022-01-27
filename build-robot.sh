@@ -3,5 +3,5 @@
 set -xe
 
 mkdir -p build
-g++ -O2 src/robot/*.cpp -o build/robot
+g++ -O2 src/{common,robot}/*.cpp -o build/robot
 build/robot
