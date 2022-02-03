@@ -14,8 +14,11 @@ void setup() {
   Serial.begin(9600);  
   pinMode(X_SERVO_PIN, OUTPUT);
   pinMode(X_FLAME_PIN, INPUT);
+  pinMode(Y_SERVO_PIN, OUTPUT);
+  pinMode(Y_FLAME_PIN, INPUT);
   
   xAxisServo.attach(X_SERVO_PIN);
+  yAxisServo.attach(Y_SERVO_PIN);
 
 }
 
@@ -56,7 +59,7 @@ int getSmallestReading(Servo& servo, int flamePin){
 void moveToLargestReading(Servo& servo, int flamePin){
   delay(100);
   int degree = getSmallestReading(servo, flamePin);
-  xAxisServo.write(degree);
+  servo.write(degree);
   Serial.println(degree);
   delay(2000);
 
