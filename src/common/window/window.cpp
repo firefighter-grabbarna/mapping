@@ -1,6 +1,6 @@
 #include "window.hpp"
 
-#include "../common/util.hpp"
+#include "../util.hpp"
 
 #include <GLFW/glfw3.h>
 

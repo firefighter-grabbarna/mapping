@@ -1,6 +1,6 @@
 #include "../common/lidar.hpp"
 #include "../common/util.hpp"
-#include "window.hpp"
+#include "../common/window/window.hpp"
 
 #include <cmath>
 #include <iostream>
