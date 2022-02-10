@@ -31,8 +31,6 @@ void loop() {
    int pwmValue = pulseIn(PWM_PIN, HIGH); // Read controller
    Serial.println(pwmValue);
    //Serial.println("\n");
-   bool movingForward = pwmValue > standStill;
-   bool movingBackward = pwmValue < standStill;
    setSpeed(convertSpeed(pwmValue));
    
    switch(getDir(pwmValue)){
@@ -64,6 +62,7 @@ directions getDir(int pwmValue){
    if (((standStill - threshold) < pwmValue) && ((standStill + threshold) > pwmValue)) return MOVE_STOP;
    if (pwmValue > standStill) return MOVE_FORWARD;
    if (pwmValue < standStill) return MOVE_BACKWARD;
+   return MOVE_STOP;
 }
 
 int convertSpeed(int speed){

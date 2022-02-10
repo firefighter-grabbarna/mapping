@@ -10,7 +10,7 @@ void setup();
 int convertSpeed(int speed);
 void setSpeed(int speed);
 
-directions getDir(int pwmValue)
+directions getDir(int pwmValue);
 
 void moveForward();
 void moveBackward();
