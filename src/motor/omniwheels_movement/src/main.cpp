@@ -6,7 +6,7 @@
 #include <Arduino.h>
 
 const int PWM_PIN = A0;
-const int standStill = 1500;
+const int standStill = 1500; // Controller in middle position
 
 AF_DCMotor RightBackWheel(3);
 AF_DCMotor LeftBackWheel(2);
@@ -27,10 +27,10 @@ void setup() {
 }
 int convertSpeed(int speed){
    int final = 0;
-   if (speed < standStill){
+   if (speed < standStill){ // Go backwards
       final = standStill - speed;
    }
-   else{
+   else {   // Go forwards
       final = speed - standStill;
    }
 
@@ -39,9 +39,11 @@ int convertSpeed(int speed){
 
 void setSpeed(int speed){
 
+   float SCALE_LEFT = 0.9;
+
    RightBackWheel.setSpeed(speed);
-   LeftBackWheel.setSpeed(speed);
-   LeftFrontWheel.setSpeed(speed);
+   LeftBackWheel.setSpeed(speed * SCALE_LEFT);
+   LeftFrontWheel.setSpeed(speed * SCALE_LEFT);
    RightFrontWheel.setSpeed(speed);
 
 }
@@ -156,7 +158,7 @@ void motorStop(){
 }
 void loop() {
 
-   int pwmValue = pulseIn(PWM_PIN, HIGH);
+   int pwmValue = pulseIn(PWM_PIN, HIGH); // Read controller
    Serial.println(pwmValue);
    //Serial.println("\n");
    bool movingForward = pwmValue > standStill;
