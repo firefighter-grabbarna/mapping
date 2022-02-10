@@ -6,6 +6,7 @@
 
 const int PWM_PIN = A0;
 const int standStill = 1500; // Controller in middle position
+const int BAUD_RATE = 9600;
 
 AF_DCMotor RightBackWheel(3);
 AF_DCMotor LeftBackWheel(2);
@@ -14,7 +15,7 @@ AF_DCMotor RightFrontWheel(1);
 
 void setup() {
    //115200
-   Serial.begin(9600);
+   Serial.begin(BAUD_RATE);
    Serial.println("Motor test!");
 
    // turn on motor dont crash code
@@ -47,7 +48,17 @@ void loop() {
    }
 }
 
+/*
+1500 - 1400 = 100
+1400 - 1500 = -100
+
+
+*/
+
+
 int convertSpeed(int speed){
+   return abs(standStill - speed) / 2;
+   /*
    int final = 0;
    if (speed < standStill){ // Go backwards
       final = standStill - speed;
@@ -57,6 +68,7 @@ int convertSpeed(int speed){
    }
 
    return (final)/2;
+   */
 }
 
 void setSpeed(int speed){
