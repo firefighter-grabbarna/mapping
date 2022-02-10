@@ -51,7 +51,7 @@ for line in lines:
     start, end = line
     start *= 10
     end *= 10
-    s += '{{'+str(int(start[0]))+','+str(int(start[1]))+'},{'+str(int(end[0]))+','+str(int(end[1]))+'}}'
+    s += '{{'+str(int(start[0]))+','+str(int(start[1]))+'},{'+str(int(end[0]))+','+str(int(end[1]))+'}},'
     s += '\n'
 print(s)
 outf.write(s)
