@@ -5,16 +5,17 @@
 #include <AFMotor.h>
 #include <Arduino.h>
 
-const int PWM_PIN = 10;
-const int standStill = 255/2;
+const int PWM_PIN = A0;
+const int standStill = 1500;
 
-AF_DCMotor RightBackWheel(4);
-AF_DCMotor LeftBackWheel(3);
-AF_DCMotor LeftFrontWheel(2);
+AF_DCMotor RightBackWheel(3);
+AF_DCMotor LeftBackWheel(2);
+AF_DCMotor LeftFrontWheel(4);
 AF_DCMotor RightFrontWheel(1);
 
 void setup() {
-   Serial.begin(115200);
+   //115200
+   Serial.begin(9600);
    Serial.println("Motor test!");
 
    // turn on motor dont crash code
@@ -24,33 +25,18 @@ void setup() {
    RightFrontWheel.run(RELEASE);
 
 }
+int convertSpeed(int speed){
+   int final = 0;
+   if (speed < standStill){
+      final = standStill - speed;
+   }
+   else{
+      final = speed - standStill;
+   }
 
-void loop() {
-
-   int pwmValue = pulseIn(PWM_PIN, HIGH);
-   bool movingForward = pwmValue > standStill;
-   bool movingForward = pwmValue < standStill;
-   int threshold = 10;
-   if (standStill - threshold < pwmValue < standStill + threshold){
-      setSpeed(standStill);
-   }
-   else if (moveForward){
-      setSpeed(pwmValue);
-      moveForward();
-   }
-   else if (moveBackward){
-      setSpeed(pwmValue);
-      moveBackward();
-   }
+   return (final)/2;
 }
 
-int forward(int speed){
-   return standStill - speed;
-}
-
-int backward(int speed){
-   return standStill + speed;
-}
 void setSpeed(int speed){
 
    RightBackWheel.setSpeed(speed);
@@ -168,3 +154,26 @@ void motorStop(){
    RightFrontWheel.run(RELEASE);
    RightBackWheel.run(RELEASE);
 }
+void loop() {
+
+   int pwmValue = pulseIn(PWM_PIN, HIGH);
+   Serial.println(pwmValue);
+   //Serial.println("\n");
+   bool movingForward = pwmValue > standStill;
+   bool movingBackward = pwmValue < standStill;
+   int threshold = 50;
+   
+   if (((standStill - threshold) < pwmValue) && ((standStill + threshold) > pwmValue) ){
+      motorStop();
+   }
+   else if (movingForward){
+      setSpeed(convertSpeed(pwmValue));
+      moveForward();
+   }
+   else if (movingBackward){
+      setSpeed(convertSpeed(pwmValue));
+      moveBackward();
+   }
+}
+
+
