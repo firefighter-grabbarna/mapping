@@ -2,8 +2,7 @@
 // copyright Adafruit Industries LLC, 2009
 // this code is public domain, enjoy!
 
-#include <AFMotor.h>
-#include <Arduino.h>
+#include "main.h"
 
 const int PWM_PIN = A0;
 const int standStill = 1500; // Controller in middle position
@@ -25,6 +24,29 @@ void setup() {
    RightFrontWheel.run(RELEASE);
 
 }
+
+void loop() {
+
+   int pwmValue = pulseIn(PWM_PIN, HIGH); // Read controller
+   Serial.println(pwmValue);
+   //Serial.println("\n");
+   bool movingForward = pwmValue > standStill;
+   bool movingBackward = pwmValue < standStill;
+   int threshold = 50;
+   
+   if (((standStill - threshold) < pwmValue) && ((standStill + threshold) > pwmValue) ){
+      motorStop();
+   }
+   else if (movingForward){
+      setSpeed(convertSpeed(pwmValue));
+      moveForward();
+   }
+   else if (movingBackward){
+      setSpeed(convertSpeed(pwmValue));
+      moveBackward();
+   }
+}
+
 int convertSpeed(int speed){
    int final = 0;
    if (speed < standStill){ // Go backwards
@@ -38,12 +60,11 @@ int convertSpeed(int speed){
 }
 
 void setSpeed(int speed){
-
-   float SCALE_LEFT = 0.9;
+   const float SCALE_LEFT_WHEELS = 0.9;
 
    RightBackWheel.setSpeed(speed);
-   LeftBackWheel.setSpeed(speed * SCALE_LEFT);
-   LeftFrontWheel.setSpeed(speed * SCALE_LEFT);
+   LeftBackWheel.setSpeed(speed * SCALE_LEFT_WHEELS);
+   LeftFrontWheel.setSpeed(speed * SCALE_LEFT_WHEELS);
    RightFrontWheel.setSpeed(speed);
 
 }
@@ -58,7 +79,7 @@ void moveForward()
   
 }
 void moveBackward() {
-  
+
    LeftFrontWheel.run(BACKWARD);
    LeftBackWheel.run(BACKWARD);
    
@@ -156,26 +177,6 @@ void motorStop(){
    RightFrontWheel.run(RELEASE);
    RightBackWheel.run(RELEASE);
 }
-void loop() {
 
-   int pwmValue = pulseIn(PWM_PIN, HIGH); // Read controller
-   Serial.println(pwmValue);
-   //Serial.println("\n");
-   bool movingForward = pwmValue > standStill;
-   bool movingBackward = pwmValue < standStill;
-   int threshold = 50;
-   
-   if (((standStill - threshold) < pwmValue) && ((standStill + threshold) > pwmValue) ){
-      motorStop();
-   }
-   else if (movingForward){
-      setSpeed(convertSpeed(pwmValue));
-      moveForward();
-   }
-   else if (movingBackward){
-      setSpeed(convertSpeed(pwmValue));
-      moveBackward();
-   }
-}
 
 
