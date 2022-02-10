@@ -7,7 +7,7 @@ tree = ET.parse('firefighterbana.svg')
 cur_pos = np.array([0,0])
 lines = []
 
-outf = open("lines.csv", "w")
+outf = open("lines.txt", "w")
 
 for child in tree.iter():
     if "path" in child.tag:
@@ -16,7 +16,6 @@ for child in tree.iter():
         tokens = attrib['d'].split()
 
         for i in range(len(tokens)):
-            print(cur_pos)
             if tokens[i] == 'M':
                 s = tokens[i+1]
                 comma_idx = s.find(',')
@@ -26,24 +25,24 @@ for child in tree.iter():
             elif tokens[i] == 'v':
                 d = float(tokens[i+1])
                 next_pos = cur_pos+np.array([0,d])
-                lines.append((cur_pos, next_pos))
+                lines.append((cur_pos.copy(), next_pos.copy()))
                 cur_pos = next_pos
             elif tokens[i] == 'h':
                 d = float(tokens[i+1])
                 next_pos = cur_pos+np.array([d,0])
-                lines.append((cur_pos, next_pos))
+                lines.append((cur_pos.copy(), next_pos.copy()))
                 cur_pos = next_pos
             elif tokens[i] == 'V':
                 d = float(tokens[i+1])
                 next_pos = cur_pos.copy()
                 next_pos[1] = d
-                lines.append((cur_pos, next_pos))
+                lines.append((cur_pos.copy(), next_pos.copy()))
                 cur_pos = next_pos
             elif tokens[i]== 'H':
                 d = float(tokens[i+1])
                 next_pos = cur_pos.copy()
                 next_pos[0] = d
-                lines.append((cur_pos, next_pos))
+                lines.append((cur_pos.copy(), next_pos.copy()))
                 cur_pos = next_pos
 
 
@@ -52,6 +51,7 @@ for line in lines:
     start, end = line
     start *= 10
     end *= 10
-    s += str(start[0])+','+str(start[1])+','+str(end[0])+','+str(end[1])
+    s += '{{'+str(int(start[0]))+','+str(int(start[1]))+'},{'+str(int(end[0]))+','+str(int(end[1]))+'}}'
     s += '\n'
+print(s)
 outf.write(s)

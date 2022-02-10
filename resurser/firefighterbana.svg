@@ -40,9 +40,9 @@
      id="layer1">
     <path
        style="fill:none;stroke:#000000;stroke-width:2.37;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       d="M 0,0 H 240 V 240 H 0 Z"
+       d="M 0,0 H 70.418124 240 V 150.60152 240 H 118.18208 0 V 139.38913 Z"
        id="path249"
-       sodipodi:nodetypes="ccccc" />
+       sodipodi:nodetypes="ccccccccc" />
     <path
        style="fill:none;stroke:#000000;stroke-width:2.37;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        d="M 70,0 V 91 H 47"
