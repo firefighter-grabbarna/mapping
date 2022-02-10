@@ -33,42 +33,41 @@ void loop() {
    //Serial.println("\n");
    bool movingForward = pwmValue > standStill;
    bool movingBackward = pwmValue < standStill;
-   int threshold = 50;
+   setSpeed(convertSpeed(pwmValue));
    
+   switch(getDir(pwmValue)){
+      case MOVE_STOP:
+         motorStop();
+         break;
+      case MOVE_FORWARD:
+         moveForward();
+         break;
+      case MOVE_BACKWARD:
+         moveBackward();
+         break;
+   }
+   /*
    if (((standStill - threshold) < pwmValue) && ((standStill + threshold) > pwmValue) ){
       motorStop();
    }
    else if (movingForward){
-      setSpeed(convertSpeed(pwmValue));
       moveForward();
    }
    else if (movingBackward){
-      setSpeed(convertSpeed(pwmValue));
       moveBackward();
    }
+   */
 }
 
-/*
-1500 - 1400 = 100
-1400 - 1500 = -100
-
-
-*/
-
+directions getDir(int pwmValue){
+   int threshold = 50;
+   if (((standStill - threshold) < pwmValue) && ((standStill + threshold) > pwmValue)) return MOVE_STOP;
+   if (pwmValue > standStill) return MOVE_FORWARD;
+   if (pwmValue < standStill) return MOVE_BACKWARD;
+}
 
 int convertSpeed(int speed){
    return abs(standStill - speed) / 2;
-   /*
-   int final = 0;
-   if (speed < standStill){ // Go backwards
-      final = standStill - speed;
-   }
-   else {   // Go forwards
-      final = speed - standStill;
-   }
-
-   return (final)/2;
-   */
 }
 
 void setSpeed(int speed){
