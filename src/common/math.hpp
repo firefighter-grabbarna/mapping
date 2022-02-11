@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cmath>
+#include <optional>
 
 struct Vec2;
 struct Point;
@@ -17,6 +17,8 @@ struct Vec2 {
     float mag() const;
     // Dot product.
     float dot(Vec2 other) const;
+    // Cross product.
+    float cross(Vec2 other) const;
 
     Vec2 operator+(Vec2 rhs) const;
     Vec2 operator-(Vec2 rhs) const;
@@ -45,4 +47,14 @@ struct Line {
 
     // The point in the line closest to the target.
     Point pointClosestTo(Point target) const;
+};
+
+// A ray with infinite length.
+struct Ray {
+    Point origin;
+    Vec2 direction;
+
+    Ray(Point origin, Vec2 direction) : origin(origin), direction(direction) {}
+
+    std::optional<Point> castOnto(Line line) const;
 };

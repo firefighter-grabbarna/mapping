@@ -91,7 +91,7 @@ int main() {
     Window window(width, height, windowName);
 
     std::vector<Line> distorted = lines;
-    addRandomOffsets(distorted, 20);
+    addRandomOffsets(distorted, 50);
 
     while (!window.shouldClose()) {
         window.fill({ 50, 50, 50 });
@@ -100,8 +100,35 @@ int main() {
 
         Canvas canvas(&window, { 1200, 1200 }, 3000);
 
+        for (const Line &line : lines) {
+            canvas.line(line.p1, line.p2, { 150, 150, 150 });
+        }
+
         for (const Line &line : distorted) {
             canvas.line(line.p1, line.p2, { 255, 255, 255 });
+        }
+
+        for (float angle = 0; angle <= 6.28; angle += 0.05) {
+            Point origin(800, 1200);
+            Vec2 direction(sinf(angle), cosf(angle));
+            Ray ray(origin, direction);
+
+            Point closest;
+            float closestDist = 1e100;
+
+            for (const Line &line : distorted) {
+                auto result = ray.castOnto(line);
+                if (!result.has_value()) continue;
+                Point hit = result.value();
+
+                float dist = (hit - origin).mag();
+                if (dist > closestDist) continue;
+                
+                closest = hit;
+                closestDist = dist;
+            }
+
+            canvas.line(origin, closest, {255, 127, 127});
         }
 
         window.redraw();
