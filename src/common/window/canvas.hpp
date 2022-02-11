@@ -9,18 +9,21 @@ public:
     //
     // The center will be at the center of the window, and scale will be the size of
     // the shorter of the vertical and horizontal height.
-    Canvas(Window *window, Vec2 center, float scale);
+    Canvas(Window *window, Point center, float scale);
 
     // Draws a single pixel at the specified coordinate.
-    void point(Vec2 point, Color color);
+    void point(Point point, Color color);
 
     // Draws a thin line between the specified coordinates.
-    void line(Vec2 p1, Vec2 p2, Color color);
+    void line(Point p1, Point p2, Color color);
 
 private:
     Window *window;
 
-    // The origin and scale such that `pixel = origin + delta * coord`
-    Vec2 origin;
-    float delta;
+    // The offset and scale such that `pixel = (coord - origin) * scale - + offset`.
+    Vec2 offset;
+    float scale;
+
+    // Transformsa point from the coordinate space to the 
+    Point coordToPixel(Point coord);
 };

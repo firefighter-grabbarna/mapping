@@ -13,10 +13,6 @@ const int width = 600;
 const int height = 600;
 const char* windowName = "Simulering";
 
-struct Line {
-    Vec2 p1, p2;
-};
-
 const std::vector<Line> lines = {
     {{0, 2400}, {700, 2400}}, 
     {{700, 2400}, {2400, 2400}}, 
@@ -38,24 +34,12 @@ const std::vector<Line> lines = {
     {{1920, 1380}, {1640, 1380}}, 
 };
 
-float distance_to_lines(const std::vector<Line> &lines, Vec2 point) {
+float distanceToLines(const std::vector<Line> &lines, Point point) {
     float closest = INFINITY;
 
     for (const auto &line : lines) {
-        Vec2 p1 = line.p1;
-        Vec2 p2 = line.p2;
-    
-        Vec2 lv = p2 - p1;
-        Vec2 pv = point - p1;
-
-        float fraction = lv.dot(pv) / lv.dot(lv);
-
-        if (fraction > 1) fraction = 1;
-        if (fraction < 0) fraction = 0;
-
-        Vec2 p3 = p1 + lv * fraction;
-
-        float dist = (p3 - point).mag();
+        Point closestPoint = line.pointClosestTo(point);
+        float dist = (closestPoint - point).mag();
         if (dist < closest) closest = dist;
     }
 
@@ -65,10 +49,10 @@ float distance_to_lines(const std::vector<Line> &lines, Vec2 point) {
 void drawDistances(Window &window, const std::vector<Line>& lines) {
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            Vec2 pixel(x - 60, height - y - 60);
-            Vec2 point = pixel / 2 * 10;
+            Vec2 pixel(x - 60, y - 60);
+            Point point = Point(pixel / 2 * 10);
 
-            float dist = distance_to_lines(lines, point);
+            float dist = distanceToLines(lines, point);
 
             unsigned char color = 50;
 
@@ -83,7 +67,7 @@ void drawDistances(Window &window, const std::vector<Line>& lines) {
     }
 }
 
-void addRandomOffset(Vec2 &point, float intensity, std::map<std::pair<int, int>, Vec2> &cache) {
+void addRandomOffset(Point &point, float intensity, std::map<std::pair<int, int>, Point> &cache) {
     std::pair<int, int> key(point.x, point.y);
     if (cache.find(key) == cache.end()) {
         Vec2 offset(
@@ -96,7 +80,7 @@ void addRandomOffset(Vec2 &point, float intensity, std::map<std::pair<int, int>,
 }
 
 void addRandomOffsets(std::vector<Line> &lines, float intensity) {
-    std::map<std::pair<int, int>, Vec2> cache;
+    std::map<std::pair<int, int>, Point> cache;
     for (Line &line : lines) {
         addRandomOffset(line.p1, intensity, cache);
         addRandomOffset(line.p2, intensity, cache);
@@ -111,6 +95,8 @@ int main() {
 
     while (!window.shouldClose()) {
         window.fill({ 50, 50, 50 });
+
+        //drawDistances(window, distorted);
 
         Canvas canvas(&window, { 1200, 1200 }, 3000);
 
