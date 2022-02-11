@@ -1,6 +1,7 @@
 #include "../common/math.hpp"
 #include "../common/util.hpp"
 #include "../common/window/window.hpp"
+#include "../common/window/canvas.hpp"
 
 #include <array>
 #include <cmath>
@@ -17,24 +18,24 @@ struct Line {
 };
 
 const std::vector<Line> lines = {
-    {{0,0},{700,0}},
-    {{700,0},{2400,0}},
-    {{2400,0},{2400,1500}},
-    {{2400,1500},{2400,2400}},
-    {{2400,2400},{1180,2400}},
-    {{1180,2400},{0,2400}},
-    {{0,2400},{0,1380}},
-    {{0,1380},{0,0}},
-    {{700,0},{700,910}},
-    {{700,910},{470,910}},
-    {{710,1930},{710,1380}},
-    {{710,1380},{0,1380}},
-    {{1180,2400},{1180,1960}},
-    {{1180,1500},{2400,1500}},
-    {{1170,1020},{1170,470}},
-    {{1170,470},{1920,470}},
-    {{1920,470},{1920,1020}},
-    {{1920,1020},{1640,1020}},
+    {{0, 2400}, {700, 2400}}, 
+    {{700, 2400}, {2400, 2400}}, 
+    {{2400, 2400}, {2400, 900}}, 
+    {{2400, 900}, {2400, 0}}, 
+    {{2400, 0}, {1180, 0}}, 
+    {{1180, 0}, {0, 0}}, 
+    {{0, 0}, {0, 1020}}, 
+    {{0, 1020}, {0, 2400}}, 
+    {{700, 2400}, {700, 1490}}, 
+    {{700, 1490}, {470, 1490}}, 
+    {{710, 470}, {710, 1020}}, 
+    {{710, 1020}, {0, 1020}}, 
+    {{1180, 0}, {1180, 440}}, 
+    {{1180, 900}, {2400, 900}}, 
+    {{1170, 1380}, {1170, 1930}}, 
+    {{1170, 1930}, {1920, 1930}}, 
+    {{1920, 1930}, {1920, 1380}}, 
+    {{1920, 1380}, {1640, 1380}}, 
 };
 
 float distance_to_lines(const std::vector<Line> &lines, Vec2 point) {
@@ -69,7 +70,7 @@ void drawDistances(Window &window, const std::vector<Line>& lines) {
 
             float dist = distance_to_lines(lines, point);
 
-            int color = 50;
+            unsigned char color = 50;
 
             if (dist < 10) {
                 color = 0;
@@ -77,7 +78,7 @@ void drawDistances(Window &window, const std::vector<Line>& lines) {
                 color = 250 - dist;
             }
 
-            window.put(x, y, color, color, color);
+            window.put(x, y, { color, color, color });
         }
     }
 }
@@ -109,15 +110,12 @@ int main() {
     addRandomOffsets(distorted, 20);
 
     while (!window.shouldClose()) {
-        window.fill(50, 50, 50);
-        
-        for (const Line &line : distorted) {
-            int x1 = line.p1.x / 5 + 60;
-            int y1 = height - line.p1.y / 5 - 60;
-            int x2 = line.p2.x / 5 + 60;
-            int y2 = height - line.p2.y / 5 - 60;
+        window.fill({ 50, 50, 50 });
 
-            window.line(x1, y1, x2, y2, 255, 255, 255);
+        Canvas canvas(&window, { 1200, 1200 }, 3000);
+
+        for (const Line &line : distorted) {
+            canvas.line(line.p1, line.p2, { 255, 255, 255 });
         }
 
         window.redraw();

@@ -1,4 +1,10 @@
+#pragma once
+
 #include <GLFW/glfw3.h>
+
+struct Color {
+    unsigned char red, green, blue;
+};
 
 class Window {
 public:
@@ -12,11 +18,11 @@ public:
     // Polls for events and tests if the window should close.
     bool shouldClose();
     // Fills the window with the specified color.
-    void fill(unsigned char red, unsigned char green, unsigned char blue);
+    void fill(Color color);
     // Changes the color of the specified pixel.
-    void put(int x, int y, unsigned char red, unsigned char green, unsigned char blue);
+    void put(int x, int y, Color color);
     // Draws a line between the specified points.
-    void line(int x1, int y1, int x2, int y2, unsigned char red, unsigned char green, unsigned char blue);
+    void line(int x1, int y1, int x2, int y2, Color color);
     // Redraws the window.
     void redraw();
 private:
