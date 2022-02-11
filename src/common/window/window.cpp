@@ -3,6 +3,7 @@
 #include "../util.hpp"
 
 #include <GLFW/glfw3.h>
+#include <cstdlib>
 
 Window::Window(int width, int height, const char *windowName) {
     this->width = width;
@@ -31,17 +32,76 @@ bool Window::shouldClose() {
     return glfwWindowShouldClose(this->window);
 }
 
+void Window::fill(
+    unsigned char red,
+    unsigned char green,
+    unsigned char blue
+) {
+    for (int i = 0; i < this->width * this->height; i++) {
+        this->buffer[i * 4 + 0] = 255;
+        this->buffer[i * 4 + 1] = blue;
+        this->buffer[i * 4 + 2] = green;
+        this->buffer[i * 4 + 3] = red;
+    }
+}
+
 void Window::put(
     int x, int y,
     unsigned char red,
     unsigned char green,
     unsigned char blue
 ) {
+    if (x < 0 || x >= this->width) return;
+    if (y < 0 || y >= this->height) return;
+
     int idx = (x + y * this->width) * 4 + 0;
     this->buffer[idx + 0] = 255;
     this->buffer[idx + 1] = blue;
     this->buffer[idx + 2] = green;
     this->buffer[idx + 3] = red;
+}
+
+void Window::line(
+    int x1, int y1, int x2, int y2,
+    unsigned char red,
+    unsigned char green,
+    unsigned char blue
+) {
+    if (abs(x2 - x1) > abs(y2 - y1)) {
+        if (x2 < x1) {
+            int t = x1;
+            x1 = x2;
+            x2 = t;
+            t = y1;
+            y1 = y2;
+            y2 = t;
+        }
+
+        float y = y1 + 0.5;
+        float dy = (float) (y2 - y1) / (x2 - x1);
+
+        for (int x = x1; x <= x2; x++) {
+            this->put(x, (int) y, red, green, blue);
+            y += dy;
+        }
+    } else {
+        if (y2 < y1) {
+            int t = x1;
+            x1 = x2;
+            x2 = t;
+            t = y1;
+            y1 = y2;
+            y2 = t;
+        }
+
+        float x = x1 + 0.5;
+        float dx = (float) (x2 - x1) / (y2 - y1);
+
+        for (int y = y1; y <= y2; y++) {
+            this->put((int) x, y, red, green, blue);
+            x += dx;
+        }
+    }
 }
 
 void Window::redraw() {

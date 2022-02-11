@@ -61,7 +61,7 @@ float distance_to_lines(const std::vector<Line> &lines, Vec2 point) {
     return closest;
 }
 
-void redraw(Window &window, const std::vector<Line>& lines) {
+void drawDistances(Window &window, const std::vector<Line>& lines) {
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
             Vec2 pixel(x - 60, height - y - 60);
@@ -109,7 +109,17 @@ int main() {
     addRandomOffsets(distorted, 20);
 
     while (!window.shouldClose()) {
-        redraw(window, distorted);
+        window.fill(50, 50, 50);
+        
+        for (const Line &line : distorted) {
+            int x1 = line.p1.x / 5 + 60;
+            int y1 = height - line.p1.y / 5 - 60;
+            int x2 = line.p2.x / 5 + 60;
+            int y2 = height - line.p2.y / 5 - 60;
+
+            window.line(x1, y1, x2, y2, 255, 255, 255);
+        }
+
         window.redraw();
     }
 
