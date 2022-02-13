@@ -70,12 +70,24 @@ void getWheelSpeeds(double x, double y, double omegaZ, double (&speedVector)[4])
       u2  =  l+w   1   1  *   w = H(0)*vb
       u3     l+w   1  -1      x
       u4    -l-w   1   1      y
+
+
+
+   found in coppeliaSim a simulation program
+      function setMovement(forwBackVel,leftRightVel,rotVel)
+    -- Apply the desired wheel velocities:
+    sim.setJointTargetVelocity(wheelJoints[1],-forwBackVel-leftRightVel-rotVel)
+    sim.setJointTargetVelocity(wheelJoints[2],-forwBackVel+leftRightVel-rotVel)
+    sim.setJointTargetVelocity(wheelJoints[3],-forwBackVel-leftRightVel+rotVel)
+    sim.setJointTargetVelocity(wheelJoints[4],-forwBackVel+leftRightVel+rotVel)
+end
                           
    */
-   double u1 = (1/r) * ( (-l - w) * omegaZ + x - y); 
-   double u2 = (1/r) * ( (l + w) * omegaZ + x + y);
-   double u3 = (1/r) * ( (l + w) * omegaZ + x - y);
-   double u4 = (1/r) * ( (-l - w) * omegaZ + x + y);
+   // this is the same as the commented code but reversed minus tecken. forwBackVel = x leftRightVel = y rotVel = omegaZ
+   double u1 = (1/r) * ( (-l - w) * omegaZ + x - y); // 4 in coppa
+   double u2 = (1/r) * ( (l + w) * omegaZ + x + y); // 1 in coppa
+   double u3 = (1/r) * ( (l + w) * omegaZ + x - y); // 2 in coppa
+   double u4 = (1/r) * ( (-l - w) * omegaZ + x + y); // 3 in coppa
    // the wheels should be mapped correctly, however test this to make sure
    speedVector[0] = u2; // right front
    speedVector[1] = u4; // left back
