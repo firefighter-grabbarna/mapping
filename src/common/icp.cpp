@@ -117,3 +117,39 @@ float transformCost(
 
     return sqrtf(sum) / (points.size() - 1);
 }
+
+// Generates a random float in the specified range.
+static float randomFloat(float min, float max) {
+    return min + (max - min) / RAND_MAX * rand();
+}
+
+Transform searchTransform(const Map& map, const std::vector<Point> &points) {
+    float minX = INFINITY, maxX = -INFINITY;
+    float minY = INFINITY, maxY = -INFINITY;
+    for (const Line &wall : map.walls) {
+        minX = std::min(minX, std::min(wall.p1.x, wall.p2.x));
+        maxX = std::max(maxX, std::max(wall.p1.x, wall.p2.x));
+        minY = std::min(minY, std::min(wall.p1.y, wall.p2.y));
+        maxY = std::max(maxY, std::max(wall.p1.y, wall.p2.y));
+    }
+
+    Transform best;
+    float bestCost = INFINITY;
+
+    for (int i = 0; i < 1000; i++) {
+        Transform guess(
+            Rotation(randomFloat(-3.14, 3.14)),
+            Vec2(randomFloat(minX, maxX), randomFloat(minY, maxY))
+        );
+
+        guess = updateTransform(guess, map, points);
+        float cost = transformCost(guess, map, points);
+
+        if (cost < bestCost) {
+            bestCost = cost;
+            best = guess;
+        }
+    }
+
+    return best;
+}

@@ -21,3 +21,6 @@ Transform updateTransform(Transform transform, const Map& map, const std::vector
 
 // A cost function for determining the accuracy of the transform
 float transformCost(Transform transform, const Map& map, const std::vector<Point> &points);
+
+// Similar to updateTransform but doesn't require an initial guess.
+Transform searchTransform(const Map& map, const std::vector<Point> &Points);

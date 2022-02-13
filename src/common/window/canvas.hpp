@@ -17,6 +17,11 @@ public:
     // Draws a thin line between the specified coordinates.
     void line(Point p1, Point p2, Color color);
 
+    // Transforms a point from the coordinate space to the screen space
+    Point coordToPixel(Point coord);
+    // Transforms a point from the screen space to the coordinate space
+    Point pixelToCoord(Point coord);
+
 private:
     Window *window;
 
@@ -24,6 +29,4 @@ private:
     Vec2 offset;
     float scale;
 
-    // Transformsa point from the coordinate space to the 
-    Point coordToPixel(Point coord);
 };

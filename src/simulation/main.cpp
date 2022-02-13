@@ -14,7 +14,10 @@ const int width = 900;
 const int height = 600;
 const char* windowName = "Simulering";
 
-const int scanResolution = 256;
+const float minScanAngle = -120 * (3.141592 / 180);
+const float maxScanAngle = 120 * (3.141592 / 180);
+
+const int scanResolution = 512;
 
 // Generates a random float in the specified range.
 static float randomFloat(float min, float max) {
@@ -46,7 +49,9 @@ static std::vector<Point> simulateScan(const Map &map, const Transform &transfor
     std::vector<Point> points;
 
     for (int i = 0; i < scanResolution; i++) {
-        Ray ray({0, 0}, { i * (float) 6.28318530718 / scanResolution });
+        float angle = minScanAngle + i * (maxScanAngle - minScanAngle) / scanResolution;
+
+        Ray ray({0, 0}, { angle });
         ray = transform.applyTo(ray);
 
         Point closest;
@@ -63,7 +68,7 @@ static std::vector<Point> simulateScan(const Map &map, const Transform &transfor
             closestDist = dist;
         }
 
-        if (closestDist < 4096 && closestDist > 200) {
+        if (closestDist < 4096 && closestDist > 250) {
             points.push_back(transform.inverse().applyTo(closest));
         }
     }
@@ -96,28 +101,27 @@ int main() {
     //std::srand(1);
     std::srand(time(0));
 
-    Window window(width, height, windowName);
-
     // Create the distorted map
     Map distorted = map;
     addRandomOffsets(distorted, 50);
 
+    float time = 0;
+
     // The actual poisiton and rotation of the robot.
-    Transform realTransform(Rotation(0.9), Vec2(800, 1300));
+    Transform realTransform(time * 6.28 / 3, Vec2(1200, 1200) + Vec2(800, 0).rotate(time / 4));
+    Transform guess = realTransform;
 
-    // Simulate a scan in the distorted map
-    std::vector<Point> scanned = simulateScan(distorted, realTransform);
+    Window window(width, height, windowName);
 
-    // The guessed transform of the robot
-    Transform guess1(Rotation(1), Vec2(1000, 1100));
-    Transform guess2 = updateTransform(guess1, map, scanned);
-
-    std::cout
-        << transformCost(guess1, map, scanned) << " -> "
-        << transformCost(guess2, map, scanned) << std::endl;
 
     while (!window.shouldClose()) {
         window.fill({ 50, 50, 50 });
+
+        realTransform = Transform(time * 6.28 / 3, Vec2(1200, 1200) + Vec2(800, 0).rotate(time / 4));
+
+        // Simulate a scan in the distorted map, and use it to update the position
+        std::vector<Point> scanned = simulateScan(distorted, realTransform);
+        guess = updateTransform(guess, map, scanned);
 
         Canvas leftCanvas(&window, { 2600, 1200 }, 4000);
         Canvas rightCanvas(&window, { -200, 1200 }, 4000);
@@ -138,11 +142,13 @@ int main() {
             );
             
             rightCanvas.line(
-                guess1.applyTo(point),
-                guess2.applyTo(point),
+                guess.applyTo(Point(0, 0)),
+                guess.applyTo(point),
                 {127, 255, 127}
             );
         }
+
+        time += 1.0 / 60;
 
         window.redraw();
     }

@@ -27,6 +27,9 @@ void Canvas::line(Point p1, Point p2, Color color) {
 }
 
 Point Canvas::coordToPixel(Point point) {
-    Point scaled = (point.vec2() * this->scale).point();
-    return scaled + this->offset;
+    return (point.vec2() * this->scale).point() + this->offset;
+}
+
+Point Canvas::pixelToCoord(Point pixel) {
+    return ((pixel - this->offset).vec2() / this->scale).point();
 }
