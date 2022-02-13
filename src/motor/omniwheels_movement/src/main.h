@@ -1,3 +1,6 @@
+#ifndef MAIN_H
+#define MAIN_H
+
 #include <AFMotor.h>
 #include <Arduino.h>
 
@@ -27,3 +30,4 @@ void moveLeftBackward();
 
 void motorStop();
 
+#endif
