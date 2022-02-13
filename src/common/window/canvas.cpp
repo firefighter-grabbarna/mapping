@@ -10,7 +10,7 @@ Canvas::Canvas(Window *window, Point center, float scale) {
     Vec2 windowSize(window->width, window->height);
 
     this->scale = std::min(windowSize.x, windowSize.y) / scale;
-    this->offset = windowSize / 2 - Vec2(center) * this->scale;
+    this->offset = windowSize / 2 - center.vec2() * this->scale;
 }
 
 void Canvas::point(Point pos, Color color) {
@@ -27,6 +27,9 @@ void Canvas::line(Point p1, Point p2, Color color) {
 }
 
 Point Canvas::coordToPixel(Point point) {
-    Point scaled = Point(Vec2(point) * this->scale);
-    return scaled + this->offset;
+    return (point.vec2() * this->scale).point() + this->offset;
+}
+
+Point Canvas::pixelToCoord(Point pixel) {
+    return ((pixel - this->offset).vec2() / this->scale).point();
 }

@@ -4,27 +4,49 @@
 #include <optional>
 #include <iostream>
 
-Vec2::Vec2() {
-    this->x = 0;
-    this->y = 0;
+float Rotation::sin() const {
+    return std::sin(this->radians);
 }
-Vec2::Vec2(Point point) {
-    this->x = point.x;
-    this->y = point.y;
+float Rotation::cos() const {
+    return std::cos(this->radians);
+}
+
+Rotation Rotation::operator-() const {
+    return Rotation(-this->radians);
+}
+Rotation Rotation::operator+(Rotation rhs) const {
+    return Rotation(this->radians + rhs.radians);
+}
+Rotation Rotation::operator-(Rotation rhs) const {
+    return Rotation(this->radians - rhs.radians);
+}
+
+Point Vec2::point() const {
+    return Point(this->x, this->y);
 }
 
 float Vec2::mag() const {
     return hypot(this->x, this->y);
 }
-
+float Vec2::magSq() const {
+    return this->x * this->x + this->y * this->y;
+}
 float Vec2::dot(Vec2 other) const {
     return this->x * other.x + this->y * other.y;
 }
-
 float Vec2::cross(Vec2 other) const {
     return this->x * other.y - this->y * other.x;
 }
+Vec2 Vec2::rotate(Rotation rotation) const {
+    return Vec2(
+        this->x * rotation.cos() - this->y * rotation.sin(),
+        this->x * rotation.sin() + this->y * rotation.cos()
+    );
+}
 
+Vec2 Vec2::operator-() const {
+    return Vec2(-this->x, -this->y);
+}
 Vec2 Vec2::operator+(Vec2 rhs) const {
     return Vec2(this->x + rhs.x, this->y + rhs.y);
 }
@@ -44,13 +66,8 @@ Vec2 Vec2::operator/(float rhs) const {
     return Vec2(this->x / rhs, this->y / rhs);
 }
 
-Point::Point() {
-    this->x = 0;
-    this->y = 0;
-}
-Point::Point(Vec2 vec) {
-    this->x = vec.x;
-    this->y = vec.y;
+Vec2 Point::vec2() const {
+    return Vec2(this->x, this->y);
 }
 
 Point Point::operator+(Vec2 rhs) const {
@@ -61,6 +78,35 @@ Point Point::operator-(Vec2 rhs) const {
 }
 Vec2 Point::operator-(Point rhs) const {
     return Vec2(this->x - rhs.x, this->y - rhs.y);
+}
+
+Transform Transform::rotate(Rotation rotation) const {
+    return Transform(
+        this->rotation + rotation,
+        this->offset.rotate(rotation)
+    );
+}
+Transform Transform::translate(Vec2 offset) const {
+    return Transform(
+        this->rotation,
+        this->offset + offset
+    );
+}
+
+Transform Transform::inverse() const {
+    return Transform(
+        -this->rotation,
+        -this->offset.rotate(-this->rotation)
+    );
+}
+Vec2 Transform::applyTo(Vec2 vec) const {
+    return vec.rotate(this->rotation);
+}
+Point Transform::applyTo(Point point) const {
+    return (point.vec2().rotate(this->rotation)).point() + this->offset;
+}
+Ray Transform::applyTo(Ray ray) const {
+    return Ray(this->applyTo(ray.origin), this->applyTo(ray.direction));
 }
 
 Point Line::pointClosestTo(Point target) const {
