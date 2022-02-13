@@ -90,16 +90,51 @@ Transform guessTransform(
     Transform oldGuess,
     const std::vector<Line> &map
 ) {
-    Vec2 translationSum;
-    for (const Point &point : scanned) {
-        Point target = closestPointInMap(oldGuess.applyTo(point), map);
-        translationSum = translationSum + (target - point);
+    std::vector<Point> targets = scanned;
+    for (Point &point : targets) {
+        point = closestPointInMap(oldGuess.applyTo(point), map);
+    }
+
+    Vec2 translationSum(0, 0);
+    Vec2 positionSum(0, 0);
+    for (size_t i = 0; i < scanned.size(); i++) {
+        translationSum = translationSum + (targets[i] - scanned[i]);
+        positionSum = positionSum + targets[i].vec2();
     }
     Vec2 translation = translationSum / scanned.size();
 
-    // To do: Rotation
+    Point rotationCenter = (positionSum / scanned.size()).point();
 
-    return Transform({ 0 }, translation);
+    // https://en.wikipedia.org/wiki/Procrustes_analysis#Rotation
+    float num = 0.0;
+    float den = 0.0;
+
+    for (size_t i = 0; i < scanned.size(); i++) {
+        Vec2 p = scanned[i] + translation - rotationCenter;
+        Vec2 t = targets[i] - rotationCenter;
+
+        num += p.cross(t);
+        den += p.dot(t);
+    }
+
+    Rotation rot1 = atan2(num, den);
+    Rotation rot2 = rot1 + 3.1415926535;
+
+    Transform guess1 = Transform(0, translation - rotationCenter.vec2())
+        .rotate(rot1).translate(rotationCenter.vec2());
+
+    Transform guess2 = Transform(0, translation - rotationCenter.vec2())
+        .rotate(rot2).translate(rotationCenter.vec2());
+
+    float cost1 = 0.0;
+    float cost2 = 0.0;
+
+    for (size_t i = 0; i < scanned.size(); i++) {
+        cost1 += (guess1.applyTo(scanned[i]) - targets[i]).magSq();
+        cost2 += (guess2.applyTo(scanned[i]) - targets[i]).magSq();
+    }
+
+    return cost1 < cost2 ? guess1 : guess2;
 }
 
 Transform iterateGuess(
@@ -165,6 +200,7 @@ int main() {
         {{1920, 1380}, {1640, 1380}}, 
     };
 
+    //std::srand(1);
     std::srand(time(0));
 
     Window window(width, height, windowName);
@@ -174,13 +210,13 @@ int main() {
     addRandomOffsets(distorted, 50);
 
     // The actual poisiton and rotation of the robot.
-    Transform realTransform(Rotation(0), Vec2(800, 1300));
+    Transform realTransform(Rotation(0.9), Vec2(800, 1300));
 
     // Simulate a scan in the distorted map
     std::vector<Point> scanned = simulateScan(distorted, realTransform);
 
     // The guessed transform of the robot
-    Transform guess1(Rotation(0), Vec2(1000, 1100));
+    Transform guess1(Rotation(1), Vec2(1000, 1100));
     Transform guess2 = iterateGuess(scanned, guess1, map);
 
     std::cout

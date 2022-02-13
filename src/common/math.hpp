@@ -2,7 +2,6 @@
 
 #include <optional>
 
-struct Rotation;
 struct Vec2;
 struct Point;
 struct Line;
@@ -29,7 +28,8 @@ struct Vec2 {
 
     Vec2(): x(0), y(0) {}
     Vec2(float x, float y): x(x), y(y) {}
-    Vec2(Point point);
+
+    Point point() const;
 
     // Magnitude of the vector.
     float mag() const;
@@ -58,7 +58,8 @@ struct Point {
 
     Point(): x(0), y(0) {}
     Point(float x, float y) : x(x), y(y) {}
-    Point(Vec2 vec);
+
+    Vec2 vec2() const;
 
     Point operator+(Vec2 rhs) const;
     Point operator-(Vec2 rhs) const;
@@ -72,6 +73,9 @@ struct Transform {
 
     Transform(): rotation(0), offset(0, 0) {}
     Transform(Rotation rotation, Vec2 offset): rotation(rotation), offset(offset) {}
+
+    Transform rotate(Rotation rotation) const;
+    Transform translate(Vec2 offset) const;
 
     Transform inverse() const;
     Vec2 applyTo(Vec2 point) const;

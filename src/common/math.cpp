@@ -21,9 +21,8 @@ Rotation Rotation::operator-(Rotation rhs) const {
     return Rotation(this->radians - rhs.radians);
 }
 
-Vec2::Vec2(Point point) {
-    this->x = point.x;
-    this->y = point.y;
+Point Vec2::point() const {
+    return Point(this->x, this->y);
 }
 
 float Vec2::mag() const {
@@ -67,9 +66,8 @@ Vec2 Vec2::operator/(float rhs) const {
     return Vec2(this->x / rhs, this->y / rhs);
 }
 
-Point::Point(Vec2 vec) {
-    this->x = vec.x;
-    this->y = vec.y;
+Vec2 Point::vec2() const {
+    return Vec2(this->x, this->y);
 }
 
 Point Point::operator+(Vec2 rhs) const {
@@ -82,6 +80,19 @@ Vec2 Point::operator-(Point rhs) const {
     return Vec2(this->x - rhs.x, this->y - rhs.y);
 }
 
+Transform Transform::rotate(Rotation rotation) const {
+    return Transform(
+        this->rotation + rotation,
+        this->offset.rotate(rotation)
+    );
+}
+Transform Transform::translate(Vec2 offset) const {
+    return Transform(
+        this->rotation,
+        this->offset + offset
+    );
+}
+
 Transform Transform::inverse() const {
     return Transform(
         -this->rotation,
@@ -92,7 +103,7 @@ Vec2 Transform::applyTo(Vec2 vec) const {
     return vec.rotate(this->rotation);
 }
 Point Transform::applyTo(Point point) const {
-    return Point(Vec2(point).rotate(this->rotation)) + this->offset;
+    return (point.vec2().rotate(this->rotation)).point() + this->offset;
 }
 Ray Transform::applyTo(Ray ray) const {
     return Ray(this->applyTo(ray.origin), this->applyTo(ray.direction));
