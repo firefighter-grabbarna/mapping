@@ -1,3 +1,4 @@
+#include "../common/icp.hpp"
 #include "../common/math.hpp"
 #include "../common/util.hpp"
 #include "../common/window/window.hpp"
@@ -15,31 +16,33 @@ const char* windowName = "Simulering";
 
 const int scanResolution = 256;
 
+// Generates a random float in the specified range.
+static float randomFloat(float min, float max) {
+    return min + (max - min) / RAND_MAX * rand();
+}
+
 // Adds a random offset with the specified intensity to the point. The cache is
 // used to ensure that the same point is always move to the same position.
-void addRandomOffset(Point &point, float intensity, std::map<std::pair<int, int>, Point> &cache) {
+static void addRandomOffset(Point &point, float intensity, std::map<std::pair<int, int>, Point> &cache) {
     std::pair<int, int> key(point.x, point.y);
     if (cache.find(key) == cache.end()) {
-        Vec2 offset(
-            rand() % 2000 / (float) 1000 - 1,
-            rand() % 2000 / (float) 1000 - 1
-        );
+        Vec2 offset(randomFloat(-1, 1), randomFloat(-1, 1));
         cache[key] = point + offset * intensity;
     }
     point = cache[key];
 }
 
 // Distorts the map by adding random offsets to the endpoints of all lines.
-void addRandomOffsets(std::vector<Line> &map, float intensity) {
+static void addRandomOffsets(Map &map, float intensity) {
     std::map<std::pair<int, int>, Point> cache;
-    for (Line &line : map) {
-        addRandomOffset(line.p1, intensity, cache);
-        addRandomOffset(line.p2, intensity, cache);
+    for (Line &wall : map.walls) {
+        addRandomOffset(wall.p1, intensity, cache);
+        addRandomOffset(wall.p2, intensity, cache);
     }
 }
 
 // Simulates a scan and returns the point cloud relative to the robot.
-std::vector<Point> simulateScan(const std::vector<Line> &lines, const Transform &transform) {
+static std::vector<Point> simulateScan(const Map &map, const Transform &transform) {
     std::vector<Point> points;
 
     for (int i = 0; i < scanResolution; i++) {
@@ -49,8 +52,8 @@ std::vector<Point> simulateScan(const std::vector<Line> &lines, const Transform 
         Point closest;
         float closestDist = 1e100;
 
-        for (const Line &line : lines) {
-            auto result = ray.castOnto(line);
+        for (const Line &wall : map.walls) {
+            auto result = ray.castOnto(wall);
             if (!result.has_value()) continue;
 
             float dist = (result.value() - ray.origin).mag();
@@ -68,118 +71,8 @@ std::vector<Point> simulateScan(const std::vector<Line> &lines, const Transform 
     return points;
 }
 
-Point closestPointInMap(Point point, const std::vector<Line> &map) {
-    Point closest = point;
-    float closestDistSq = INFINITY;
-
-    for (const Line& line : map) {
-        Point target = line.pointClosestTo(point);
-        float distSq = (target - point).magSq();
-
-        if (distSq < closestDistSq) {
-            closest = target;
-            closestDistSq = distSq;
-        }
-    }
-
-    return closest;
-}
-
-Transform guessTransform(
-    const std::vector<Point> &scanned,
-    Transform oldGuess,
-    const std::vector<Line> &map
-) {
-    std::vector<Point> targets = scanned;
-    for (Point &point : targets) {
-        point = closestPointInMap(oldGuess.applyTo(point), map);
-    }
-
-    Vec2 translationSum(0, 0);
-    Vec2 positionSum(0, 0);
-    for (size_t i = 0; i < scanned.size(); i++) {
-        translationSum = translationSum + (targets[i] - scanned[i]);
-        positionSum = positionSum + targets[i].vec2();
-    }
-    Vec2 translation = translationSum / scanned.size();
-
-    Point rotationCenter = (positionSum / scanned.size()).point();
-
-    // https://en.wikipedia.org/wiki/Procrustes_analysis#Rotation
-    float num = 0.0;
-    float den = 0.0;
-
-    for (size_t i = 0; i < scanned.size(); i++) {
-        Vec2 p = scanned[i] + translation - rotationCenter;
-        Vec2 t = targets[i] - rotationCenter;
-
-        num += p.cross(t);
-        den += p.dot(t);
-    }
-
-    Rotation rot1 = atan2(num, den);
-    Rotation rot2 = rot1 + 3.1415926535;
-
-    Transform guess1 = Transform(0, translation - rotationCenter.vec2())
-        .rotate(rot1).translate(rotationCenter.vec2());
-
-    Transform guess2 = Transform(0, translation - rotationCenter.vec2())
-        .rotate(rot2).translate(rotationCenter.vec2());
-
-    float cost1 = 0.0;
-    float cost2 = 0.0;
-
-    for (size_t i = 0; i < scanned.size(); i++) {
-        cost1 += (guess1.applyTo(scanned[i]) - targets[i]).magSq();
-        cost2 += (guess2.applyTo(scanned[i]) - targets[i]).magSq();
-    }
-
-    return cost1 < cost2 ? guess1 : guess2;
-}
-
-Transform iterateGuess(
-    const std::vector<Point> &scanned,
-    Transform guess,
-    const std::vector<Line> &map
-) {
-    float diffThreshold = 1.0;
-    float largestDiff;
-
-    do {
-        Transform oldGuess = guess;
-
-        guess = guessTransform(scanned, oldGuess, map);
-
-        largestDiff = 0.0;
-        for (const Point &point : scanned) {
-            float diff = (guess.applyTo(point) - oldGuess.applyTo(point)).mag();
-            if (diff > largestDiff)
-                largestDiff = diff;
-        }
-    } while (largestDiff > diffThreshold);
-
-    return guess;
-}
-
-float costOfGuess(
-    const std::vector<Point> &scanned,
-    Transform guess,
-    const std::vector<Line> &map
-) {
-    float sum = 0.0;
-
-    for (const Point &point : scanned) {
-        Point transformed = guess.applyTo(point);
-        Point closest = closestPointInMap(transformed, map);
-
-        sum += (closest - transformed).magSq();
-    }
-
-    return sqrtf(sum) / (scanned.size() - 1);
-}
-
 int main() {
-    const std::vector<Line> map = {
+    const Map map({
         {{0, 2400}, {700, 2400}}, 
         {{700, 2400}, {2400, 2400}}, 
         {{2400, 2400}, {2400, 900}}, 
@@ -198,7 +91,7 @@ int main() {
         {{1170, 1930}, {1920, 1930}}, 
         {{1920, 1930}, {1920, 1380}}, 
         {{1920, 1380}, {1640, 1380}}, 
-    };
+    });
 
     //std::srand(1);
     std::srand(time(0));
@@ -206,7 +99,7 @@ int main() {
     Window window(width, height, windowName);
 
     // Create the distorted map
-    std::vector<Line> distorted = map;
+    Map distorted = map;
     addRandomOffsets(distorted, 50);
 
     // The actual poisiton and rotation of the robot.
@@ -217,11 +110,11 @@ int main() {
 
     // The guessed transform of the robot
     Transform guess1(Rotation(1), Vec2(1000, 1100));
-    Transform guess2 = iterateGuess(scanned, guess1, map);
+    Transform guess2 = updateTransform(guess1, map, scanned);
 
     std::cout
-        << costOfGuess(scanned, guess1, map) << " -> "
-        << costOfGuess(scanned, guess2, map) << std::endl;
+        << transformCost(guess1, map, scanned) << " -> "
+        << transformCost(guess2, map, scanned) << std::endl;
 
     while (!window.shouldClose()) {
         window.fill({ 50, 50, 50 });
@@ -229,11 +122,11 @@ int main() {
         Canvas leftCanvas(&window, { 2600, 1200 }, 4000);
         Canvas rightCanvas(&window, { -200, 1200 }, 4000);
 
-        for (const Line &line : distorted) {
+        for (const Line &line : distorted.walls) {
             leftCanvas.line(line.p1, line.p2, { 255, 255, 255 });
         }
 
-        for (const Line &line : map) {
+        for (const Line &line : map.walls) {
             rightCanvas.line(line.p1, line.p2, { 100, 100, 100 });
         }
 

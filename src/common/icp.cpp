@@ -1,0 +1,119 @@
+#include "icp.hpp"
+
+#include "math.hpp"
+
+#include <cmath>
+
+// Gets the closest point on the walls to the target point.
+Point Map::closestPointTo(Point target) const {
+    Point closest = target;
+    float closestDistSq = INFINITY;
+
+    for (const Line& wall : this->walls) {
+        Point point = wall.pointClosestTo(target);
+        float distSq = (point - target).magSq();
+
+        if (distSq < closestDistSq) {
+            closest = point;
+            closestDistSq = distSq;
+        }
+    }
+
+    return closest;
+}
+
+// Performs a single ICP step.
+static Transform updateTransformStep(
+    Transform oldTransform,
+    const Map& map,
+    const std::vector<Point> &points
+) {
+    std::vector<Point> targets = points;
+    for (Point &point : targets) {
+        point = map.closestPointTo(oldTransform.applyTo(point));
+    }
+
+    Vec2 translationSum(0, 0);
+    Vec2 positionSum(0, 0);
+    for (size_t i = 0; i < points.size(); i++) {
+        translationSum = translationSum + (targets[i] - points[i]);
+        positionSum = positionSum + targets[i].vec2();
+    }
+    Vec2 translation = translationSum / points.size();
+
+    Point rotationCenter = (positionSum / points.size()).point();
+
+    // https://en.wikipedia.org/wiki/Procrustes_analysis#Rotation
+    float num = 0.0;
+    float den = 0.0;
+
+    for (size_t i = 0; i < points.size(); i++) {
+        Vec2 p = points[i] + translation - rotationCenter;
+        Vec2 t = targets[i] - rotationCenter;
+
+        num += p.cross(t);
+        den += p.dot(t);
+    }
+
+    Rotation rot1 = atan2(num, den);
+    Rotation rot2 = rot1 + 3.1415926535;
+
+    // Compare the two solutions to find which one is the miniumum.
+    Transform guess1 = Transform(0, translation - rotationCenter.vec2())
+        .rotate(rot1).translate(rotationCenter.vec2());
+
+    Transform guess2 = Transform(0, translation - rotationCenter.vec2())
+        .rotate(rot2).translate(rotationCenter.vec2());
+
+    float cost1 = 0.0;
+    float cost2 = 0.0;
+
+    for (size_t i = 0; i < points.size(); i++) {
+        cost1 += (guess1.applyTo(points[i]) - targets[i]).magSq();
+        cost2 += (guess2.applyTo(points[i]) - targets[i]).magSq();
+    }
+
+    return cost1 < cost2 ? guess1 : guess2;
+}
+
+// Updates the transform by modifying it to align the points to the walls.
+Transform updateTransform(
+    Transform transform,
+    const Map& map,
+    const std::vector<Point> &points
+) {
+    float diffThreshold = 1.0;
+    float largestDiff;
+
+    do {
+        Transform prevTransform = transform;
+
+        transform = updateTransformStep(prevTransform, map, points);
+
+        largestDiff = 0.0;
+        for (const Point &point : points) {
+            float diff = (transform.applyTo(point) - prevTransform.applyTo(point)).mag();
+            if (diff > largestDiff)
+                largestDiff = diff;
+        }
+    } while (largestDiff > diffThreshold);
+
+    return transform;
+}
+
+float transformCost(
+    Transform transform,
+    const Map& map,
+    const std::vector<Point> &points
+) {
+    float sum = 0.0;
+
+    for (const Point &point : points) {
+        Point transformed = transform.applyTo(point);
+        Point closest = map.closestPointTo(transformed);
+
+        sum += (closest - transformed).magSq();
+    }
+
+    return sqrtf(sum) / (points.size() - 1);
+}
