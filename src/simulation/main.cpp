@@ -17,7 +17,7 @@ const char* windowName = "Simulering";
 const float minScanAngle = -120 * (3.141592 / 180);
 const float maxScanAngle = 120 * (3.141592 / 180);
 
-const int scanResolution = 512;
+const int scanResolution = 700;
 
 // Generates a random float in the specified range.
 static float randomFloat(float min, float max) {
@@ -63,7 +63,7 @@ static std::vector<Point> simulateScan(const Map &map, const Transform &transfor
 
             float dist = (result.value() - ray.origin).mag();
             if (dist > closestDist) continue;
-            
+
             closest = result.value();
             closestDist = dist;
         }
@@ -109,7 +109,9 @@ int main() {
 
     // The actual poisiton and rotation of the robot.
     Transform realTransform(time * 6.28 / 3, Vec2(1200, 1200) + Vec2(800, 0).rotate(time / 4));
-    Transform guess = realTransform;
+    
+    // The guessed position of the robot.
+    Transform guess = searchTransform(map, simulateScan(distorted, realTransform));
 
     Window window(width, height, windowName);
 

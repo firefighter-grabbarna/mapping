@@ -108,6 +108,10 @@ float transformCost(
 ) {
     float sum = 0.0;
 
+    // To do: Ta hänsyn till hur nära väggarna strålar skulle träffa
+    // Kanske bara kolla de ~95% bästa strålarna för att undvika problem med strålar
+    // som precis nuddar kanten av en vägg?
+
     for (const Point &point : points) {
         Point transformed = transform.applyTo(point);
         Point closest = map.closestPointTo(transformed);
