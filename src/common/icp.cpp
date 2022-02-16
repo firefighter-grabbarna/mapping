@@ -22,6 +22,25 @@ Point Map::closestPointTo(Point target) const {
     return closest;
 }
 
+Point Map::raycast(Ray ray) const {
+    Point closest = ray.origin;
+    float closestDistSq = INFINITY;
+
+    for (const Line& wall : this->walls) {
+        auto result = ray.castOnto(wall);
+        if (!result.has_value()) continue;
+
+        float distSq = (result.value() - ray.origin).magSq();
+
+        if (distSq < closestDistSq) {
+            closest = result.value();
+            closestDistSq = distSq;
+        }
+    }
+
+    return closest;
+}
+
 // Performs a single ICP step.
 static Transform updateTransformStep(
     Transform oldTransform,
@@ -77,6 +96,8 @@ static Transform updateTransformStep(
 }
 
 // Updates the transform by modifying it to align the points to the walls.
+//
+// Will probably fail on small numbers of points.
 Transform updateTransform(
     Transform transform,
     const Map& map,
@@ -116,10 +137,12 @@ float transformCost(
         Point transformed = transform.applyTo(point);
         Point closest = map.closestPointTo(transformed);
 
+
         sum += (closest - transformed).magSq();
     }
 
-    return sqrtf(sum) / (points.size() - 1);
+    //return totalPenetration / (penetrations.size() * 9 / 10);
+    return sqrtf(sum / std::max((int) points.size(), 1));
 }
 
 // Generates a random float in the specified range.

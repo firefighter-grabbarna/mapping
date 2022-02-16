@@ -14,6 +14,8 @@ public:
 
     // Gets the closest point on the walls to the target point.
     Point closestPointTo(Point target) const;
+    // Casts a ray agains the walls.
+    Point raycast(Ray ray) const;
 };
 
 // Updates the transform by modifying it to align the points to the walls of the map.

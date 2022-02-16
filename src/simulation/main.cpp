@@ -51,25 +51,14 @@ static std::vector<Point> simulateScan(const Map &map, const Transform &transfor
     for (int i = 0; i < scanResolution; i++) {
         float angle = minScanAngle + i * (maxScanAngle - minScanAngle) / scanResolution;
 
-        Ray ray({0, 0}, { angle });
+        Ray ray({ 0, 0 }, { angle });
         ray = transform.applyTo(ray);
 
-        Point closest;
-        float closestDist = 1e100;
+        Point hit = map.raycast(ray);
+        float dist = (hit - ray.origin).mag();
 
-        for (const Line &wall : map.walls) {
-            auto result = ray.castOnto(wall);
-            if (!result.has_value()) continue;
-
-            float dist = (result.value() - ray.origin).mag();
-            if (dist > closestDist) continue;
-
-            closest = result.value();
-            closestDist = dist;
-        }
-
-        if (closestDist < 4096 && closestDist > 250) {
-            points.push_back(transform.inverse().applyTo(closest));
+        if (dist < 4096 && dist > 250) {
+            points.push_back(transform.inverse().applyTo(hit));
         }
     }
 
@@ -111,7 +100,7 @@ int main() {
     Transform realTransform(time * 6.28 / 3, Vec2(1200, 1200) + Vec2(800, 0).rotate(time / 4));
     
     // The guessed position of the robot.
-    Transform guess = searchTransform(map, simulateScan(distorted, realTransform));
+    Transform guess;
 
     Window window(width, height, windowName);
 
@@ -123,7 +112,16 @@ int main() {
 
         // Simulate a scan in the distorted map, and use it to update the position
         std::vector<Point> scanned = simulateScan(distorted, realTransform);
-        guess = updateTransform(guess, map, scanned);
+        if (scanned.size() > 30) {
+            guess = updateTransform(guess, map, scanned);
+
+            float cost = transformCost(guess, map, scanned);
+            std::cout << cost << std::endl;
+            if (cost > 40.0) {
+                guess = searchTransform(map, scanned);
+            }
+        }
+
 
         Canvas leftCanvas(&window, { 2600, 1200 }, 4000);
         Canvas rightCanvas(&window, { -200, 1200 }, 4000);
