@@ -87,6 +87,13 @@ int main() {
         {{1920, 1380}, {1640, 1380}}, 
     });
 
+    // const Map map({
+    //     {{0, 0}, {1270, 0}},
+    //     {{0, 620}, {1270, 620}},
+    //     {{0, 0}, {0, 620}},
+    //     {{1270, 0}, {1270, 620}},
+    // });
+
     //std::srand(1);
     std::srand(time(0));
 
@@ -116,10 +123,11 @@ int main() {
             guess = updateTransform(guess, map, scanned);
 
             float cost = transformCost(guess, map, scanned);
-            std::cout << cost << std::endl;
             if (cost > 40.0) {
+                std::cout << "Desync detected (" << cost << ")" << std::endl << std::endl;
                 guess = searchTransform(map, scanned);
             }
+            std::cout << "\x1b[A\x1b[K" "Cost: " << cost << std::endl;
         }
 
 

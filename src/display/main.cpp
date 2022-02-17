@@ -1,58 +1,84 @@
+#include "../common/icp.hpp"
 #include "../common/lidar.hpp"
+#include "../common/math.hpp"
 #include "../common/util.hpp"
 #include "../common/window/window.hpp"
+#include "../common/window/canvas.hpp"
 
+#include <array>
 #include <cmath>
 #include <iostream>
+#include <map>
 #include <vector>
 
-const int width = 1024;
-const int height = 640;
-const char* windowName = "Firefighter";
-
-void redraw(Window &window, const std::vector<int> &values) {
-    int diagonal = sqrt(window.width * window.width + window.height * window.height);
-
-    float max_dist = 5000.0;
-    float scale = max_dist / (diagonal / 2);
-
-    for (int y = 0; y < window.height; y++) {
-        for (int x = 0; x < window.width; x++) {
-            int dx = x - window.width / 2;
-            int dy = y - window.height / 2;
-            int dist = sqrt(dx * dx + dy * dy);
-
-            float radians = atan2(-dx, dy) + 3.141592654;
-            size_t index = (size_t) (radians / (2 * 3.141592654) * values.size());
-            if (index >= values.size()) index = values.size() - 1;
-
-            int value = values[index];
-            //if (value < 200) value = 0;
-
-            if (value == -1) {
-                window.put(x, y, 255, 0, 0);
-            } else if (value < 200) {
-                window.put(x, y, 127, 127, 127);
-            } else if (dist > value / scale + 5) {
-                window.put(x, y, 127, 127, 127);
-            } else if (dist > value / scale) {
-                window.put(x, y, 0, 0, 0);
-            } else {
-                window.put(x, y, 255, 255, 255);
-            }
-        }
-    }
-}
+const int width = 900;
+const int height = 600;
+const char* windowName = "Lidar";
 
 int main() {
+    // const Map map({
+    //     {{0, 0}, {1270, 0}},
+    //     {{0, 620}, {1270, 620}},
+    //     {{0, 0}, {0, 620}},
+    //     {{1270, 0}, {1270, 620}},
+    // });
+    const Map map({
+        {{1270, 0}, {1270, 500}},
+        {{0, 0}, {1270, 0}},
+        {{0, 0}, {0, 620}},
+        {{0, 620}, {620, 620}},
+        {{620, 620}, {620, 200}},
+        {{620, 200}, {730, 200}},
+    });
+
+    std::srand(time(0));
+
     // Connect to the lidar.
     Lidar lidar("/dev/ttyACM0");
     
+    // The guessed position of the robot.
+    Transform guess;
+
     Window window(width, height, windowName);
 
     while (!window.shouldClose()) {
-        auto values = lidar.scan();
-        redraw(window, values);
+        window.fill({ 50, 50, 50 });
+
+        std::vector<Point> scanned;
+
+        std::vector<int> distances = lidar.scan();
+        for (size_t i = 0; i < distances.size(); i++) {
+            if (distances[i] < 0 || distances[i] > 4000) continue;
+
+            float angle = -(float) i / distances.size() * 3.141592 * 2;
+            scanned.push_back((Vec2(1, 0).rotate(angle) * distances[i]).point());
+        }
+
+        if (scanned.size() > 30) {
+            guess = updateTransform(guess, map, scanned);
+
+            float cost = transformCost(guess, map, scanned);
+            if (cost > 40.0) {
+                std::cout << "Desync detected (" << cost << ")" << std::endl << std::endl;
+                guess = searchTransform(map, scanned);
+            }
+            std::cout << "\x1b[A\x1b[K" "Cost: " << cost << std::endl;
+        }
+
+        Canvas canvas(&window, { 635, 310 }, 1500);
+
+        for (const Line &line : map.walls) {
+            canvas.line(line.p1, line.p2, { 100, 100, 100 });
+        }
+
+        for (const Point &point : scanned) {
+            canvas.line(
+                guess.applyTo(Point(0, 0)),
+                guess.applyTo(point),
+                {127, 255, 127}
+            );
+        }
+
         window.redraw();
     }
 
