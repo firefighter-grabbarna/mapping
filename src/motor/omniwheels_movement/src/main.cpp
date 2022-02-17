@@ -37,6 +37,8 @@ void setup() {
 
 }
 /*
+
+calculates the wheel speed for moving in a perticular direction
 param - omega is the angular speed
 param - x is the speed in x-direction
 param - y is the speed in y-direction
@@ -54,52 +56,13 @@ https://www.youtube.com/watch?v=B1K-ti5Lqjc
 */
 
 void getWheelSpeeds(double x, double y, double omegaZ, double (&speedVector)[4]){
-   /* 
-   l is the distance from the middle of the base to the middle of the wheel
-   w is the distance from the wheel to the middle of the base.
-   These distances are not diagonal, only the straight line on the x or y axis
-   */ 
-   double l = 1; // TODO: update these to the correct value 
-   double w = 1;
-   double r = 1; // the radius of the wheel
-   /*
-   This is the resulting vector from matrix mutliplication of
-           
-      u1    -l-w   1  -1     
-      u2  =  l+w   1   1  *   w = H(0)*vb
-      u3     l+w   1  -1      x
-      u4    -l-w   1   1      y
 
-
-
-   found in coppeliaSim a simulation program
-      function setMovement(forwBackVel,leftRightVel,rotVel)
-    -- Apply the desired wheel velocities:
-    sim.setJointTargetVelocity(wheelJoints[1],-forwBackVel-leftRightVel-rotVel)
-    sim.setJointTargetVelocity(wheelJoints[2],-forwBackVel+leftRightVel-rotVel)
-    sim.setJointTargetVelocity(wheelJoints[3],-forwBackVel-leftRightVel+rotVel)
-    sim.setJointTargetVelocity(wheelJoints[4],-forwBackVel+leftRightVel+rotVel)
-end
-                          
-   */
-   // this is the same as the commented code but reversed minus tecken. forwBackVel = x leftRightVel = y rotVel = omegaZ
-   speedVector[LEFT_FRONT_WHEEL-1] = (1/r) * ( (l + w) * omegaZ + x + y); // 1 in coppa // left front 
-   speedVector[LEFT_BACK_WHEEL-1] = (1/r) * ( (l + w) * omegaZ + x - y); // 2 in coppa // left back  
-   speedVector[RIGHT_BACK_WHEEL-1] = (1/r) * ( (-l - w) * omegaZ + x + y); // 3 in coppa // right back  ? 
-   speedVector[RIGHT_FRONT_WHEEL-1] = (1/r) * ( (-l - w) * omegaZ + x - y); // 4 in coppa // right front ?
-   /*
-   //double u2 = (1/r) * ( (l + w) * omegaZ + x + y); // 1 in coppa // left rear 
-   //double u3 = (1/r) * ( (l + w) * omegaZ + x - y); // 2 in coppa // right rear  
-   //double u4 = (1/r) * ( (-l - w) * omegaZ + x + y); // 3 in coppa // right front ? 
-   //double u1 = (1/r) * ( (-l - w) * omegaZ + x - y); // 4 in coppa // left front ?
    
-   the wheels should be mapped correctly, however test this to make sure
-   speedVector[LEFT_FRONT_WHEEL] = u1; // 
-   speedVector[LEFT_BACK_WHEEL] = u2; //  
-   speedVector[RIGHT_BACK_WHEEL] = u3; // 
-   speedVector[RIGHT_FRONT_WHEEL] = u4; //  
-   */
-   
+
+   speedVector[LEFT_FRONT_WHEEL-1] = (x + y + omegaZ ); // 1 in coppa // left front 
+   speedVector[LEFT_BACK_WHEEL-1] = ( x - y + omegaZ ); // 2 in coppa // left back  
+   speedVector[RIGHT_BACK_WHEEL-1] = ( x + y - omegaZ ); // 3 in coppa // right back  ? 
+   speedVector[RIGHT_FRONT_WHEEL-1] = ( x - y -omegaZ ); // 4 in coppa // right front ?
 }
 /*
 
@@ -110,14 +73,16 @@ end
    A positive speed means fortwads
 */
 
-void setSpeedAndDirection(int speed, AF_DCMotor &wheel){ 
+void setSpeedAndDirection(double speed, AF_DCMotor &wheel){ 
+   int int_speed = (int) speed;
+   
    if (speed >= SPEED_THRESHOLD){
       wheel.run(FORWARD);
-      wheel.setSpeed(speed);
+      wheel.setSpeed(int_speed);
    }
    else if (speed <= -SPEED_THRESHOLD){
       wheel.run(BACKWARD);
-      wheel.setSpeed(abs(speed));
+      wheel.setSpeed(abs(int_speed));
    }
 
 }
@@ -133,55 +98,16 @@ void setWheelSpeed(int wheel_case, double speed2){
    switch (wheel_case)
    {
    case LEFT_BACK_WHEEL:
-   if (speed >= SPEED_THRESHOLD){
-      LeftBackWheel.run(FORWARD);
-      LeftBackWheel.setSpeed(speed);
-   }
-   else if (speed <= -SPEED_THRESHOLD){
-      LeftBackWheel.run(BACKWARD);
-      LeftBackWheel.setSpeed(abs(speed));
-   }
-
-      //setSpeedAndDirection(speed, LeftBackWheel);
-    
+      setSpeedAndDirection(speed, LeftBackWheel); 
       break;
    case RIGHT_BACK_WHEEL:
-   if (speed >= SPEED_THRESHOLD){
-      RightBackWheel.run(FORWARD);
-      RightBackWheel.setSpeed(speed);
-   }
-   else if (speed <= -SPEED_THRESHOLD){
-      RightBackWheel.run(BACKWARD);
-      RightBackWheel.setSpeed(abs(speed));
-   }
-    
-    //     setSpeedAndDirection(speed, RightBackWheel);
+      setSpeedAndDirection(speed, RightBackWheel);
       break;
    case LEFT_FRONT_WHEEL:
-   if (speed >= SPEED_THRESHOLD){
-      LeftFrontWheel.run(FORWARD);
-      LeftFrontWheel.setSpeed(speed);
-   }
-   else if (speed <= -SPEED_THRESHOLD){
-      LeftFrontWheel.run(BACKWARD);
-      LeftFrontWheel.setSpeed(abs(speed));
-   }
-    
-    
-    //     setSpeedAndDirection(speed, LeftFrontWheel);
+      setSpeedAndDirection(speed, LeftFrontWheel);
       break;
    case RIGHT_FRONT_WHEEL:
-   if (speed >= SPEED_THRESHOLD){
-      RightFrontWheel.run(FORWARD);
-      RightFrontWheel.setSpeed(speed);
-   }
-   else if (speed <= -SPEED_THRESHOLD){
-      RightFrontWheel.run(BACKWARD);
-      RightFrontWheel.setSpeed(abs(speed));
-   }
-    
-    
-    //     setSpeedAndDirection(speed, RightFrontWheel);
+      setSpeedAndDirection(speed, RightFrontWheel);
       break;
    }
 }
@@ -194,24 +120,12 @@ void setWheelSpeed(int wheel_case, double speed2){
 void setWheelSpeed(double (&u)[4]){
    // make sure the wheels are mapped to the correct for this to work!
    
-      //setWheelSpeed(1, u[1]);
-      //Serial.println(u[1]);
-   /*
-   speedVector[LEFT_FRONT_WHEEL-1] = (1/r) * ( (l + w) * omegaZ + x + y); // 1 in coppa // left front 
-   speedVector[LEFT_BACK_WHEEL-1] = (1/r) * ( (l + w) * omegaZ + x - y); // 2 in coppa // left back  
-   speedVector[RIGHT_BACK_WHEEL-1] = (1/r) * ( (-l - w) * omegaZ + x + y); // 3 in coppa // right back  ? 
-   speedVector[RIGHT_FRONT_WHEEL-1] = (1/r) * ( (-l - w) * omegaZ + x - y); // 4 in coppa // right front ?
-   const int RIGHT_FRONT_WHEEL = 1;
-   const int LEFT_BACK_WHEEL = 2;
-   const int RIGHT_BACK_WHEEL = 3;
-   const int LEFT_FRONT_WHEEL = 4;
-
-   */
+     /*  This should work so the loop should also work test it
       setWheelSpeed(LEFT_FRONT_WHEEL, u[LEFT_FRONT_WHEEL-1]);
       setWheelSpeed(LEFT_BACK_WHEEL, u[LEFT_BACK_WHEEL - 1]);
       setWheelSpeed(RIGHT_BACK_WHEEL, u[RIGHT_BACK_WHEEL- 1]);
       setWheelSpeed(RIGHT_FRONT_WHEEL, u[RIGHT_FRONT_WHEEL - 1]);
-         
+         */
    int i;
    for (i = 0; i <= 3; i++){
       setWheelSpeed(i + 1, u[i]);
@@ -256,36 +170,6 @@ void loop() {
    setWheelSpeed(speedVector);
 
 
-/*
-   int pwmValue = pulseIn(PWM_PIN, HIGH); // Read controller
-   Serial.println(pwmValue);
-   //Serial.println("\n");
-   setSpeed(convertSpeed(pwmValue));
-   
-   switch(getDir(pwmValue)){
-      case MOVE_STOP:
-         motorStop();
-         break;
-      case MOVE_FORWARD:
-         moveForward();
-         break;
-      case MOVE_BACKWARD:
-         moveBackward();
-         break;
-   }
-  */
-  
-   /*
-   if (((standStill - threshold) < pwmValue) && ((standStill + threshold) > pwmValue) ){
-      motorStop();
-   }
-   else if (movingForward){
-      moveForward();
-   }
-   else if (movingBackward){
-      moveBackward();
-   }
-   */
 }
 
 directions getDir(int pwmValue){
