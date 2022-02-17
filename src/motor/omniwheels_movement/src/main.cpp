@@ -10,7 +10,6 @@ const int BAUD_RATE = 9600;
 
 
 
-
 const int RIGHT_FRONT_WHEEL = 1;
 const int LEFT_BACK_WHEEL = 2;
 const int RIGHT_BACK_WHEEL = 3;
@@ -197,6 +196,22 @@ void setWheelSpeed(double (&u)[4]){
    
       //setWheelSpeed(1, u[1]);
       //Serial.println(u[1]);
+   /*
+   speedVector[LEFT_FRONT_WHEEL-1] = (1/r) * ( (l + w) * omegaZ + x + y); // 1 in coppa // left front 
+   speedVector[LEFT_BACK_WHEEL-1] = (1/r) * ( (l + w) * omegaZ + x - y); // 2 in coppa // left back  
+   speedVector[RIGHT_BACK_WHEEL-1] = (1/r) * ( (-l - w) * omegaZ + x + y); // 3 in coppa // right back  ? 
+   speedVector[RIGHT_FRONT_WHEEL-1] = (1/r) * ( (-l - w) * omegaZ + x - y); // 4 in coppa // right front ?
+   const int RIGHT_FRONT_WHEEL = 1;
+   const int LEFT_BACK_WHEEL = 2;
+   const int RIGHT_BACK_WHEEL = 3;
+   const int LEFT_FRONT_WHEEL = 4;
+
+   */
+      setWheelSpeed(LEFT_FRONT_WHEEL, u[LEFT_FRONT_WHEEL-1]);
+      setWheelSpeed(LEFT_BACK_WHEEL, u[LEFT_BACK_WHEEL - 1]);
+      setWheelSpeed(RIGHT_BACK_WHEEL, u[RIGHT_BACK_WHEEL- 1]);
+      setWheelSpeed(RIGHT_FRONT_WHEEL, u[RIGHT_FRONT_WHEEL - 1]);
+         
    int i;
    for (i = 0; i <= 3; i++){
       setWheelSpeed(i + 1, u[i]);
