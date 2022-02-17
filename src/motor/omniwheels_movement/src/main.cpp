@@ -111,10 +111,10 @@ void setWheelSpeed(int wheel_case, double speed2){
       break;
    }
 }
+
 /*
    Sets the speed of each wheel to the elements of u
 */
-
 
 
 void setWheelSpeed(double (&u)[4]){
@@ -132,8 +132,6 @@ void setWheelSpeed(double (&u)[4]){
       Serial.println(u[i]);
    }
 }
-
-
 void loop() {
    // ---------------------------
    // this code is untested and therefore commented until it can be tested
@@ -172,128 +170,6 @@ void loop() {
 
 }
 
-directions getDir(int pwmValue){
-   int threshold = 50;
-   if (((standStill - threshold) < pwmValue) && ((standStill + threshold) > pwmValue)) return MOVE_STOP;
-   if (pwmValue > standStill) return MOVE_FORWARD;
-   if (pwmValue < standStill) return MOVE_BACKWARD;
-   return MOVE_STOP;
-}
-
-int convertSpeed(int speed){
-   return abs(standStill - speed) / 2;
-}
-
-void setSpeed(int speed){
-   const float SCALE_LEFT_WHEELS = 0.9;
-
-   RightBackWheel.setSpeed(speed);
-   LeftBackWheel.setSpeed(speed * SCALE_LEFT_WHEELS);
-   LeftFrontWheel.setSpeed(speed * SCALE_LEFT_WHEELS);
-   RightFrontWheel.setSpeed(speed);
-
-}
-
-void moveForward()
-{
-   LeftFrontWheel.run(FORWARD);
-   LeftBackWheel.run(FORWARD);
-   
-   RightFrontWheel.run(FORWARD); 
-   RightBackWheel.run(FORWARD);
-  
-}
-void moveBackward() {
-
-   LeftFrontWheel.run(BACKWARD);
-   LeftBackWheel.run(BACKWARD);
-   
-   RightFrontWheel.run(BACKWARD);
-   RightBackWheel.run(BACKWARD);
-   
-}
-void moveSidewaysRight() {
-
-   LeftFrontWheel.setSpeed(120);
-   LeftBackWheel.setSpeed(120);
-  
-   RightBackWheel.setSpeed(120);
-   RightFrontWheel.setSpeed(120);
-
-   LeftFrontWheel.run(FORWARD);
-   LeftBackWheel.run(BACKWARD);
-
-   RightFrontWheel.run(FORWARD);
-   RightBackWheel.run(BACKWARD);
-   
-}
-void moveSidewaysLeft() {
-
-   LeftFrontWheel.setSpeed(120);
-   LeftBackWheel.setSpeed(100);
-
-   RightFrontWheel.setSpeed(100);
-   RightBackWheel.setSpeed(120);
-   
-  
-   LeftFrontWheel.run(BACKWARD);
-   LeftBackWheel.run(FORWARD);
-   
-   RightFrontWheel.run(BACKWARD);
-   RightBackWheel.run(FORWARD);
-   
-}
-void rotateLeft() {
-  
-   LeftFrontWheel.run(BACKWARD);
-   LeftBackWheel.run(BACKWARD);
-   
-   RightFrontWheel.run(FORWARD);
-   RightBackWheel.run(FORWARD);
-   
-}
-void rotateRight() {
-  
-   LeftFrontWheel.run(FORWARD);
-   LeftBackWheel.run(FORWARD);
-   
-   RightFrontWheel.run(BACKWARD);
-   RightBackWheel.run(BACKWARD);
-   
-}
-void moveRightForward() {
-  
-   LeftFrontWheel.run(FORWARD);
-  // LeftBackWheel.run(FORWARD);
-   
- //  RightFrontWheel.run(BACKWARD);
-   RightBackWheel.run(BACKWARD);
-   
-}
-void moveRightBackward() {
-  
-  // LeftFrontWheel.run(FORWARD);
-   LeftBackWheel.run(BACKWARD);
-   
-   RightFrontWheel.run(BACKWARD);
- //  RightBackWheel.run(BACKWARD);
-   
-}
-void moveLeftForward() {
-  // LeftFrontWheel.run(FORWARD);
-   LeftBackWheel.run(FORWARD);
-   
-   RightFrontWheel.run(FORWARD);
- //  RightBackWheel.run(BACKWARD);
-}
-void moveLeftBackward() {
-  
-   LeftFrontWheel.run(BACKWARD);
-  // LeftBackWheel.run(FORWARD);
-   
- //  RightFrontWheel.run(FORWARD);
-   RightBackWheel.run(BACKWARD);
-}
 void motorStop(){
   
    LeftFrontWheel.run(RELEASE);
