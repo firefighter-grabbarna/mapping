@@ -16,7 +16,7 @@ const int LEFT_BACK_WHEEL = 2;
 const int RIGHT_BACK_WHEEL = 3;
 const int LEFT_FRONT_WHEEL = 4;
 
-const int SPEED_THRESHOLD = 10;
+const int SPEED_THRESHOLD = 0;
 
 
 AF_DCMotor RightFrontWheel(1);
@@ -60,9 +60,9 @@ void getWheelSpeeds(double x, double y, double omegaZ, double (&speedVector)[4])
    w is the distance from the wheel to the middle of the base.
    These distances are not diagonal, only the straight line on the x or y axis
    */ 
-   double l = -1; // TODO: update these to the correct value 
-   double w = -1;
-   double r = -1; // the radius of the wheel
+   double l = 1; // TODO: update these to the correct value 
+   double w = 1;
+   double r = 1; // the radius of the wheel
    /*
    This is the resulting vector from matrix mutliplication of
            
@@ -84,15 +84,23 @@ end
                           
    */
    // this is the same as the commented code but reversed minus tecken. forwBackVel = x leftRightVel = y rotVel = omegaZ
-   double u1 = (1/r) * ( (-l - w) * omegaZ + x - y); // 4 in coppa
-   double u2 = (1/r) * ( (l + w) * omegaZ + x + y); // 1 in coppa
-   double u3 = (1/r) * ( (l + w) * omegaZ + x - y); // 2 in coppa
-   double u4 = (1/r) * ( (-l - w) * omegaZ + x + y); // 3 in coppa
-   // the wheels should be mapped correctly, however test this to make sure
-   speedVector[0] = u2; // right front
-   speedVector[1] = u4; // left back
-   speedVector[2] = u3; // right back
-   speedVector[3] = u1; // left front
+   speedVector[LEFT_FRONT_WHEEL-1] = (1/r) * ( (l + w) * omegaZ + x + y); // 1 in coppa // left front 
+   speedVector[LEFT_BACK_WHEEL-1] = (1/r) * ( (l + w) * omegaZ + x - y); // 2 in coppa // left back  
+   speedVector[RIGHT_BACK_WHEEL-1] = (1/r) * ( (-l - w) * omegaZ + x + y); // 3 in coppa // right back  ? 
+   speedVector[RIGHT_FRONT_WHEEL-1] = (1/r) * ( (-l - w) * omegaZ + x - y); // 4 in coppa // right front ?
+   /*
+   //double u2 = (1/r) * ( (l + w) * omegaZ + x + y); // 1 in coppa // left rear 
+   //double u3 = (1/r) * ( (l + w) * omegaZ + x - y); // 2 in coppa // right rear  
+   //double u4 = (1/r) * ( (-l - w) * omegaZ + x + y); // 3 in coppa // right front ? 
+   //double u1 = (1/r) * ( (-l - w) * omegaZ + x - y); // 4 in coppa // left front ?
+   
+   the wheels should be mapped correctly, however test this to make sure
+   speedVector[LEFT_FRONT_WHEEL] = u1; // 
+   speedVector[LEFT_BACK_WHEEL] = u2; //  
+   speedVector[RIGHT_BACK_WHEEL] = u3; // 
+   speedVector[RIGHT_FRONT_WHEEL] = u4; //  
+   */
+   
 }
 /*
 
@@ -121,31 +129,78 @@ void setSpeedAndDirection(int speed, AF_DCMotor &wheel){
    corresponding wheel
 */
 
-void setWheelSpeed(int wheel_case, int speed){
+void setWheelSpeed(int wheel_case, double speed2){
+   int speed = (int) speed2;
    switch (wheel_case)
    {
    case LEFT_BACK_WHEEL:
-         setSpeedAndDirection(speed, LeftBackWheel);
+   if (speed >= SPEED_THRESHOLD){
+      LeftBackWheel.run(FORWARD);
+      LeftBackWheel.setSpeed(speed);
+   }
+   else if (speed <= -SPEED_THRESHOLD){
+      LeftBackWheel.run(BACKWARD);
+      LeftBackWheel.setSpeed(abs(speed));
+   }
+
+      //setSpeedAndDirection(speed, LeftBackWheel);
+    
       break;
    case RIGHT_BACK_WHEEL:
-         setSpeedAndDirection(speed, RightBackWheel);
+   if (speed >= SPEED_THRESHOLD){
+      RightBackWheel.run(FORWARD);
+      RightBackWheel.setSpeed(speed);
+   }
+   else if (speed <= -SPEED_THRESHOLD){
+      RightBackWheel.run(BACKWARD);
+      RightBackWheel.setSpeed(abs(speed));
+   }
+    
+    //     setSpeedAndDirection(speed, RightBackWheel);
       break;
    case LEFT_FRONT_WHEEL:
-         setSpeedAndDirection(speed, LeftFrontWheel);
+   if (speed >= SPEED_THRESHOLD){
+      LeftFrontWheel.run(FORWARD);
+      LeftFrontWheel.setSpeed(speed);
+   }
+   else if (speed <= -SPEED_THRESHOLD){
+      LeftFrontWheel.run(BACKWARD);
+      LeftFrontWheel.setSpeed(abs(speed));
+   }
+    
+    
+    //     setSpeedAndDirection(speed, LeftFrontWheel);
       break;
    case RIGHT_FRONT_WHEEL:
-         setSpeedAndDirection(speed, RightFrontWheel);
+   if (speed >= SPEED_THRESHOLD){
+      RightFrontWheel.run(FORWARD);
+      RightFrontWheel.setSpeed(speed);
+   }
+   else if (speed <= -SPEED_THRESHOLD){
+      RightFrontWheel.run(BACKWARD);
+      RightFrontWheel.setSpeed(abs(speed));
+   }
+    
+    
+    //     setSpeedAndDirection(speed, RightFrontWheel);
       break;
    }
 }
 /*
    Sets the speed of each wheel to the elements of u
 */
-void setWheelSpeed(double (&u)[4]){
 
+
+
+void setWheelSpeed(double (&u)[4]){
    // make sure the wheels are mapped to the correct for this to work!
-   for (int i = 1; i == sizeof(u) ; i++){
-      setWheelSpeed(i, u[i]);
+   
+      //setWheelSpeed(1, u[1]);
+      //Serial.println(u[1]);
+   int i;
+   for (i = 0; i <= 3; i++){
+      setWheelSpeed(i + 1, u[i]);
+      Serial.println(u[i]);
    }
 }
 
@@ -155,34 +210,38 @@ void loop() {
    // this code is untested and therefore commented until it can be tested
    // DO NOT REMOVE as i this is to be tested
    // -----------------------------
-   /*
    
    double speedVector[4];
    // this should move the car in x-direction
    getWheelSpeeds(100, 0, 0, speedVector);
    setWheelSpeed(speedVector);
+   delay(2000);
    // this should move the car in y-direction
    getWheelSpeeds(0, 100, 0, speedVector);
    setWheelSpeed(speedVector);
+   delay(2000);
    // this should spin the car in a circle
-   getWheelSpeeds(0, 0, 50, speedVector);
+   getWheelSpeeds(0, 0, 100, speedVector);
    setWheelSpeed(speedVector);
+   delay(2000);
    // this should spin the car in a circle the other direction
-   getWheelSpeeds(0, 0, -50, speedVector);
+   getWheelSpeeds(0, 0, -100, speedVector);
    setWheelSpeed(speedVector);
+   delay(2000);
    // this should move diagonal
-   getWheelSpeeds(50, 50, 0, speedVector);
+   getWheelSpeeds(100, 100, 0, speedVector);
    setWheelSpeed(speedVector);
+   delay(2000);
    // this should spin the car while moving y - direction
-   getWheelSpeeds(0, 50, 50, speedVector);
+   getWheelSpeeds(0, 100, 100, speedVector);
    setWheelSpeed(speedVector);
+   delay(2000);
    // this should spin the car while moving x and y - direction
-   getWheelSpeeds(40, 40, 40, speedVector);
+   getWheelSpeeds(100, 100, 100, speedVector);
    setWheelSpeed(speedVector);
-   
-   */
 
 
+/*
    int pwmValue = pulseIn(PWM_PIN, HIGH); // Read controller
    Serial.println(pwmValue);
    //Serial.println("\n");
@@ -199,6 +258,8 @@ void loop() {
          moveBackward();
          break;
    }
+  */
+  
    /*
    if (((standStill - threshold) < pwmValue) && ((standStill + threshold) > pwmValue) ){
       motorStop();
