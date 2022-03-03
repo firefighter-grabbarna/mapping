@@ -87,12 +87,16 @@ int main() {
         {{1920, 1380}, {1640, 1380}}, 
     });
 
-    // const Map map({
-    //     {{0, 0}, {1270, 0}},
-    //     {{0, 620}, {1270, 620}},
-    //     {{0, 0}, {0, 620}},
-    //     {{1270, 0}, {1270, 620}},
-    // });
+    const std::vector<Point> path = {
+        { 800, 1200 },
+        { 2200, 1200 },
+        { 2200, 2200 },
+        { 1000, 2200, },
+        { 1000, 200, },
+        { 200, 200, },
+    };
+
+    size_t pathIndex = 0;
 
     //std::srand(1);
     std::srand(time(0));
@@ -104,8 +108,8 @@ int main() {
     float time = 0;
 
     // The actual poisiton and rotation of the robot.
-    Transform realTransform(time * 6.28 / 3, Vec2(1200, 1200) + Vec2(800, 0).rotate(time / 4));
-    
+    Transform realTransform(0, { 1000, 1000 });
+
     // The guessed position of the robot.
     Transform guess;
 
@@ -115,7 +119,6 @@ int main() {
     while (!window.shouldClose()) {
         window.fill({ 50, 50, 50 });
 
-        realTransform = Transform(time * 6.28 / 3, Vec2(1200, 1200) + Vec2(800, 0).rotate(time / 4));
 
         // Simulate a scan in the distorted map, and use it to update the position
         std::vector<Point> scanned = simulateScan(distorted, realTransform);
@@ -128,6 +131,27 @@ int main() {
                 guess = searchTransform(map, scanned);
             }
             std::cout << "\x1b[A\x1b[K" "Cost: " << cost << std::endl;
+
+
+            Line currentLine(path[pathIndex], path[pathIndex + 1]);
+
+            Point position = guess.offset.point();
+            Point closestPoint = currentLine.pointClosestTo(position);
+            Vec2 offsetTowardsLine = (closestPoint - position).normalize();
+            Vec2 offsetOnLine = (currentLine.p2 - position).normalize();
+
+            if ((position - currentLine.p2).mag() < 100.0 && pathIndex < path.size() - 2) {
+                pathIndex += 1;
+            }
+
+            float distance = (closestPoint - position).mag();
+            float factor = std::min(distance / 200.0, 1.0);
+
+            Vec2 offset = offsetOnLine + (offsetTowardsLine - offsetOnLine) * factor;
+            offset = offset.normalize();
+
+            realTransform.offset = realTransform.offset + offset * (400.0 / 60.0);
+
         }
 
 
@@ -143,17 +167,55 @@ int main() {
         }
 
         for (const Point &point : scanned) {
+            Point target1 = realTransform.applyTo(point);
             leftCanvas.line(
-                realTransform.applyTo(Point(0, 0)),
-                realTransform.applyTo(point),
+                target1 - Vec2(10, 10),
+                target1 + Vec2(10, 10),
+                {255, 127, 127}
+            );
+            leftCanvas.line(
+                target1 - Vec2(10, -10),
+                target1 + Vec2(10, -10),
                 {255, 127, 127}
             );
             
+            Point target2 = guess.applyTo(point);
             rightCanvas.line(
-                guess.applyTo(Point(0, 0)),
-                guess.applyTo(point),
+                target2 - Vec2(10, 10),
+                target2 + Vec2(10, 10),
                 {127, 255, 127}
             );
+            rightCanvas.line(
+                target2 - Vec2(10, -10),
+                target2 + Vec2(10, -10),
+                {127, 255, 127}
+            );
+        }
+
+        leftCanvas.line(
+            realTransform.offset.point() - Vec2(30, 30),
+            realTransform.offset.point() + Vec2(30, 30),
+            {255, 127, 127}
+        );
+        leftCanvas.line(
+            realTransform.offset.point() - Vec2(30, -30),
+            realTransform.offset.point() + Vec2(30, -30),
+            {255, 127, 127}
+        );
+
+        rightCanvas.line(
+            guess.offset.point() - Vec2(30, 30),
+            guess.offset.point() + Vec2(30, 30),
+            {127, 255, 127}
+        );
+        rightCanvas.line(
+            guess.offset.point() - Vec2(30, -30),
+            guess.offset.point() + Vec2(30, -30),
+            {127, 255, 127}
+        );
+
+        for (size_t i = 0; i < path.size() - 1; i++) {
+            rightCanvas.line(path[i], path[i + 1], { 128, 128, 255 });
         }
 
         time += 1.0 / 60;

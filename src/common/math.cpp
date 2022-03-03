@@ -43,6 +43,13 @@ Vec2 Vec2::rotate(Rotation rotation) const {
         this->x * rotation.sin() + this->y * rotation.cos()
     );
 }
+Vec2 Vec2::normalize() const {
+    if (this->mag() > 0.0001) {
+        return *this / this->mag();
+    } else {
+        return *this;
+    }
+}
 
 Vec2 Vec2::operator-() const {
     return Vec2(-this->x, -this->y);

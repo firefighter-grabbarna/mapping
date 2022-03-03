@@ -42,6 +42,8 @@ struct Vec2 {
 
     // Rotates the vector.
     Vec2 rotate(Rotation rotation) const;
+    // Normalizes the vector.
+    Vec2 normalize() const;
 
     Vec2 operator-() const;
     Vec2 operator+(Vec2 rhs) const;
