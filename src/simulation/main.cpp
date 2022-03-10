@@ -150,8 +150,7 @@ int main() {
             Vec2 offset = offsetOnLine + (offsetTowardsLine - offsetOnLine) * factor;
             offset = offset.normalize();
 
-            realTransform.offset = realTransform.offset + offset * (400.0 / 60.0);
-
+            realTransform.offset = realTransform.offset + offset * (250.0 / 60.0);
         }
 
 
