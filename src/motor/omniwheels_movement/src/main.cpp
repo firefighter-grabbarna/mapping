@@ -1,31 +1,13 @@
 // Adafruit Motor shield library
 // copyright Adafruit Industries LLC, 2009
 // this code is public domain, enjoy!
+// Det var en gång, och den var grusad.
 
 #include "main.h"
 
-const int PWM_PIN = A0;
-const int standStill = 1500; // Controller in middle position
-const int BAUD_RATE = 9600;
-
-
-
-const int RIGHT_FRONT_WHEEL = 1;
-const int LEFT_BACK_WHEEL = 2;
-const int RIGHT_BACK_WHEEL = 3;
-const int LEFT_FRONT_WHEEL = 4;
-
-const int SPEED_THRESHOLD = 0;
-
-
-AF_DCMotor RightFrontWheel(1);
-AF_DCMotor LeftBackWheel(2);
-AF_DCMotor RightBackWheel(3);
-AF_DCMotor LeftFrontWheel(4);
-
-
-void setup() {
-   //115200
+void setup()
+{
+   // 115200
    Serial.begin(BAUD_RATE);
    Serial.println("Motor test!");
 
@@ -34,14 +16,13 @@ void setup() {
    LeftBackWheel.run(RELEASE);
    LeftFrontWheel.run(RELEASE);
    RightFrontWheel.run(RELEASE);
-
 }
 /*
 
 calculates the wheel speed for moving in a perticular direction
-param - omega is the angular speed
-param - x is the speed in x-direction
-param - y is the speed in y-direction
+param - omega_LUL is the angular speed
+param - forwardSpeed is the speed in forwardSpeed-direction
+param - sidewaysSpeed is the speed in sidewaysSpeed-direction
 
 NOTE: since the matrix is of dimension 4 an arbitrary choice of u1,u2,u3,u4 can cause skidding
       (it is belived to be what it means)
@@ -55,129 +36,139 @@ https://www.youtube.com/watch?v=B1K-ti5Lqjc
 
 */
 
-void getWheelSpeeds(double x, double y, double omegaZ, double (&speedVector)[4]){
-
-   
-
-   speedVector[LEFT_FRONT_WHEEL-1] = (x + y + omegaZ ); // 1 in coppa // left front 
-   speedVector[LEFT_BACK_WHEEL-1] = ( x - y + omegaZ ); // 2 in coppa // left back  
-   speedVector[RIGHT_BACK_WHEEL-1] = ( x + y - omegaZ ); // 3 in coppa // right back  ? 
-   speedVector[RIGHT_FRONT_WHEEL-1] = ( x - y -omegaZ ); // 4 in coppa // right front ?
-}
 /*
+   Calculates the speed all wheels need for the vehicle to drive
+   in a specified direction.
+    - forwardSpeed positive forward
+    - sidewaysSpeed positive left
+    - rotationspeed positive counter-clockwise
+*/
+void getWheelSpeeds(int forwardSpeed, int sidewaysSpeed, int rotationSpeed, int (&speedVector)[4])
+{
+   speedVector[LEFT_FRONT_WHEEL - 1] = min(255, (forwardSpeed + rotationSpeed + sidewaysSpeed));  // 1 in coppa // left front
+   speedVector[LEFT_BACK_WHEEL - 1] = min(255, (forwardSpeed - rotationSpeed + sidewaysSpeed));   // 2 in coppa // left back
+   speedVector[RIGHT_BACK_WHEEL - 1] = min(255, (forwardSpeed + rotationSpeed - sidewaysSpeed));  // 3 in coppa // right back  ?
+   speedVector[RIGHT_FRONT_WHEEL - 1] = min(255, (forwardSpeed - rotationSpeed - sidewaysSpeed)); // 4 in coppa // right front ?
+}
 
-   Given a speed and a wheel 
+/*
+   Given a speed and a wheel
    sets the correct direction for the wheel
 
    A negative speed means backwards
    A positive speed means fortwads
 */
-
-void setSpeedAndDirection(double speed, AF_DCMotor &wheel){ 
-   int int_speed = (int) speed;
-   
-   if (speed >= SPEED_THRESHOLD){
-      wheel.run(FORWARD);
-      wheel.setSpeed(int_speed);
-   }
-   else if (speed <= -SPEED_THRESHOLD){
-      wheel.run(BACKWARD);
-      wheel.setSpeed(abs(int_speed));
-   }
-
-}
-
-/*
-
-   Used in for example a for- loop where an integer makes an action on the 
-   corresponding wheel
-*/
-
-void setWheelSpeed(int wheel_case, double speed2){
-   int speed = (int) speed2;
-   switch (wheel_case)
+void setSpeedAndDirection(int speed, AF_DCMotor &wheel)
+{
+   wheel.setSpeed(min(255, abs((int)speed)));
+   if (speed >= SPEED_THRESHOLD)
    {
-   case LEFT_BACK_WHEEL:
-      setSpeedAndDirection(speed, LeftBackWheel); 
-      break;
-   case RIGHT_BACK_WHEEL:
-      setSpeedAndDirection(speed, RightBackWheel);
-      break;
-   case LEFT_FRONT_WHEEL:
-      setSpeedAndDirection(speed, LeftFrontWheel);
-      break;
-   case RIGHT_FRONT_WHEEL:
-      setSpeedAndDirection(speed, RightFrontWheel);
-      break;
+      wheel.run(FORWARD);
+   }
+   else if (speed <= SPEED_THRESHOLD)
+   {
+      wheel.run(BACKWARD);
    }
 }
 
 /*
-   Sets the speed of each wheel to the elements of u
+   Sets the speed of each wheel to the elements of speed_vect
 */
+void setWheelSpeed(int (&speed_vect)[4])
+{
+   setSpeedAndDirection(speed_vect[LEFT_FRONT_WHEEL - 1], LeftFrontWheel);
+   setSpeedAndDirection(speed_vect[RIGHT_BACK_WHEEL - 1], RightBackWheel);
+   setSpeedAndDirection(speed_vect[RIGHT_FRONT_WHEEL - 1], RightFrontWheel);
+   setSpeedAndDirection(speed_vect[LEFT_BACK_WHEEL - 1], LeftBackWheel);
+}
 
-
-void setWheelSpeed(double (&u)[4]){
-   // make sure the wheels are mapped to the correct for this to work!
-   
-     /*  This should work so the loop should also work test it
-      setWheelSpeed(LEFT_FRONT_WHEEL, u[LEFT_FRONT_WHEEL-1]);
-      setWheelSpeed(LEFT_BACK_WHEEL, u[LEFT_BACK_WHEEL - 1]);
-      setWheelSpeed(RIGHT_BACK_WHEEL, u[RIGHT_BACK_WHEEL- 1]);
-      setWheelSpeed(RIGHT_FRONT_WHEEL, u[RIGHT_FRONT_WHEEL - 1]);
-         */
-   int i;
-   for (i = 0; i <= 3; i++){
-      setWheelSpeed(i + 1, u[i]);
-      Serial.println(u[i]);
+// Doesn't work
+void spinDegree(int degree, int (&speedVector)[4])
+{
+   const int timeTwoPiRotation = 3150;
+   if (degree > 0)
+   {
+      getWheelSpeeds(0, 0, 150, speedVector);
    }
+   else
+   {
+      getWheelSpeeds(0, 0, -150, speedVector);
+   }
+   setWheelSpeed(speedVector);
+   delay(timeTwoPiRotation);
+   motorStop();
+   delay(3200);
 }
-void loop() {
-   // ---------------------------
-   // this code is untested and therefore commented until it can be tested
-   // DO NOT REMOVE as i this is to be tested
-   // -----------------------------
+
+/*
+   Calculates the speed of each wheel and then runs.
+    - forwardSpeed positive forward
+    - sidewaysSpeed positive left
+    - rotationspeed positive counter-clockwise
+*/
+void runWheels(int forwardSpeed, int sidewaysSpeed, int rotationSpeed){
+   int speedVector[4];
+   getWheelSpeeds(forwardSpeed, sidewaysSpeed, rotationSpeed, speedVector);
+   setWheelSpeed(speedVector);
+}
+
+// Waits for input from serial and then updates response[] with said input
+void listen(int (&response)[3]){
    
-   double speedVector[4];
-   // this should move the car in x-direction
-   getWheelSpeeds(100, 0, 0, speedVector);
-   setWheelSpeed(speedVector);
-   delay(2000);
-   // this should move the car in y-direction
-   getWheelSpeeds(0, 100, 0, speedVector);
-   setWheelSpeed(speedVector);
-   delay(2000);
-   // this should spin the car in a circle
-   getWheelSpeeds(0, 0, 100, speedVector);
-   setWheelSpeed(speedVector);
-   delay(2000);
-   // this should spin the car in a circle the other direction
-   getWheelSpeeds(0, 0, -100, speedVector);
-   setWheelSpeed(speedVector);
-   delay(2000);
-   // this should move diagonal
-   getWheelSpeeds(100, 100, 0, speedVector);
-   setWheelSpeed(speedVector);
-   delay(2000);
-   // this should spin the car while moving y - direction
-   getWheelSpeeds(0, 100, 100, speedVector);
-   setWheelSpeed(speedVector);
-   delay(2000);
-   // this should spin the car while moving x and y - direction
-   getWheelSpeeds(100, 100, 100, speedVector);
-   setWheelSpeed(speedVector);
+   while(!(Serial.available())){
+      ; // Busy wait mycket effektivt
+   }
 
+   String input = Serial.readStringUntil('\n');
+   char myArray[input.length() + 1];        //as 1 char space for null is also required
+   strcpy(myArray, input.c_str());    
+  
+   char * token = strtok(myArray, " ");   // Extract the first token
 
+   // loop through the string to extract all other tokens
+   for(int i = 0; token != NULL; i++){
+      response[i] = atoi(token);
+      token = strtok(NULL, " ");
+   }
+
+   Serial.println("speed is: ");
+   Serial.println(response[0]);
+   Serial.println(response[1]);
+   Serial.println(response[2]);
+
+   // this should move the car in forwardSpeed-direction
+   
 }
 
-void motorStop(){
-  
+
+
+void loop()
+{
+   // response contains:
+   // forwardSpeed, sidewaysSpeed, rotationSpeed
+   int response[3];
+   listen(response);
+   runWheels(response[0], response[1], response[2]);
+   //runWheels(100, 100, 100);
+   //delay(5000);
+   //runWheels(-100, -100, -100);
+   //delay(5000);
+   
+   //runWheels(0,0,255);
+   //delay(5000);
+   //runWheels(255,0,0);
+   //delay(5000);
+   //runWheels(0,255,0);
+   //delay(5000);
+   //runWheels(120,120,0);
+   //delay(5000);
+
+}
+void motorStop()
+{
    LeftFrontWheel.run(RELEASE);
    LeftBackWheel.run(RELEASE);
-   
+
    RightFrontWheel.run(RELEASE);
    RightBackWheel.run(RELEASE);
 }
-
-
-
