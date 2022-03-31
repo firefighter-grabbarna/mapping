@@ -22,8 +22,4 @@ private:
 
     // Executes a command and waits for the response.
     std::vector<std::string> query(const char *command);
-    // Writes the specified bytes to the port.
-    void output(const char *data);
-    // Reads a single line from the port. Does not include the newline.
-    std::string input();
 };
