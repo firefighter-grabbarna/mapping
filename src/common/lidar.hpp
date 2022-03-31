@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 
+#include "serial.hpp"
+
 class Lidar {
 public:
     // Connects to the lidar.
@@ -13,8 +15,8 @@ public:
     // order starting behind the lidar.
     std::vector<int> scan();
 private:
-    // The file handle.
-    int fd;
+    // The serial interface.
+    Serial serial;
     // The parameters.
     unsigned dmin, dmax, ares, amin, amax, afrt, rpm;
 

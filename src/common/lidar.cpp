@@ -1,15 +1,11 @@
 #include "lidar.hpp"
 
 #include <algorithm>
-#include <cstring>
 #include <iostream>
 #include <string>
 #include <vector>
 
-#include <fcntl.h>
-#include <unistd.h>
-#include <termios.h>
-
+#include "serial.hpp"
 #include "util.hpp"
 
 static void violation(std::string got, std::string number) {
@@ -30,41 +26,10 @@ static void ensure(bool condition, std::string number) {
     }
 }
 
-Lidar::Lidar(const char *filename) {
-    this->fd = open(filename, O_RDWR | O_NOCTTY | O_SYNC);
-    if (this->fd == -1) {
-        std::perror("Opening serial failed");
-        std::exit(1);
-    }
-
-    struct termios term;
-	tcgetattr(fd, &term);
-
-	term.c_cflag |= CS8;
-	term.c_oflag &= ~(ONLCR | ONOCR | OCRNL | OLCUC);
-	term.c_lflag &= ~(ECHO | ICANON);
-	term.c_iflag &= ~(INPCK | ISTRIP);
-
-	term.c_cc[VMIN] = 0;
-	term.c_cc[VTIME] = 0;
-
-	tcsetattr(fd, TCSAFLUSH, &term);
-
+Lidar::Lidar(const char *filename) : serial(filename) {
     // Clear the serial communication
-    this->output("\n"); //< Ensure there is no partially sent command
-    while (true) {
-        // Wait for 100ms to ensure that the lidar has time to send data
-        usleep(100'000);
-        char buf[256];
-        ssize_t count = read(this->fd, buf, sizeof(buf));
-        if (count == -1) {
-            std::perror("Reading from serial failed");
-            std::exit(1);
-        } else if (count == 0) {
-            // Stop if there is no more data
-            break;
-        }
-    }
+    this->serial.output("\n"); // Ensure there is no partially sent command
+    this->serial.readUntilBlock(); // Wait for the response from the partial command
 
     // Initialize the protocol
     auto initRes = this->query("SCIP2.0");
@@ -102,7 +67,7 @@ Lidar::Lidar(const char *filename) {
     std::cout << "D: " << this->dmin << ".." << this->dmax << "; A: " << this->ares
         << ", " << this->amin << ".." << this->afrt << ".." << this->amax
         << "; R: " << this->rpm << std::endl;
-    
+
     auto laserRes = this->query("BM");
     ensure(laserRes.size() == 2, "3a");
     ensureStr(laserRes[0], "BM", "3b");
@@ -111,11 +76,7 @@ Lidar::Lidar(const char *filename) {
     }
 }
 
-Lidar::~Lidar() {
-    if (this->fd != -1) {
-        close(this->fd);
-    }
-}
+Lidar::~Lidar() {}
 
 std::vector<int> Lidar::scan() {
     char query[16];
@@ -160,46 +121,16 @@ std::vector<int> Lidar::scan() {
 std::vector<std::string> Lidar::query(const char *query) {
     //std::cout << "W: " << query << std::endl;
 
-    this->output(query);
-    this->output("\n");
+    this->serial.output(query);
+    this->serial.output("\n");
 
     std::vector<std::string> lines;
     while (true) {
-        std::string line = this->input();
+        std::string line = this->serial.input();
         if (line.empty()) break;
         //std::cout << "R: " << line << std::endl;
         lines.push_back(line);
     }
 
     return lines;
-}
-
-void Lidar::output(const char *data) {
-    size_t len = std::strlen(data);
-    while (len > 0) {
-        ssize_t written = write(this->fd, data, len);
-        if (written == -1) {
-            std::perror("Writing to serial failed");
-            std::exit(1);
-        }
-        data += written;
-        len -= written;
-    }
-}
-
-std::string Lidar::input() {
-    std::string buf;
-    while (true) {
-        char chr;
-        ssize_t count = read(this->fd, &chr, (size_t) 1);
-        if (count == -1) {
-            std::perror("Reading from serial failed");
-            std::exit(1);
-        } else if (count == 0) {
-            continue;
-        }
-        if (chr == '\n') break;
-        buf.push_back(chr);
-    }
-    return buf;
 }
