@@ -17,24 +17,6 @@ void setup()
    LeftFrontWheel.run(RELEASE);
    RightFrontWheel.run(RELEASE);
 }
-/*
-
-calculates the wheel speed for moving in a perticular direction
-param - omega_LUL is the angular speed
-param - forwardSpeed is the speed in forwardSpeed-direction
-param - sidewaysSpeed is the speed in sidewaysSpeed-direction
-
-NOTE: since the matrix is of dimension 4 an arbitrary choice of u1,u2,u3,u4 can cause skidding
-      (it is belived to be what it means)
-      These vidoes are of concern:
-      How the speed is calculated:
-https://www.youtube.com/watch?v=NcOT9hOsceE
-
-      This talks about how to limit of our speed needs to be taken into account:
-      (one could just do low enought speed and this would probably not be a problem)
-https://www.youtube.com/watch?v=B1K-ti5Lqjc
-
-*/
 
 /*
    Calculates the speed all wheels need for the vehicle to drive
@@ -82,24 +64,6 @@ void setWheelSpeed(int (&speed_vect)[4])
    setSpeedAndDirection(speed_vect[LEFT_BACK_WHEEL - 1], LeftBackWheel);
 }
 
-// Doesn't work
-void spinDegree(int degree, int (&speedVector)[4])
-{
-   const int timeTwoPiRotation = 3150;
-   if (degree > 0)
-   {
-      getWheelSpeeds(0, 0, 150, speedVector);
-   }
-   else
-   {
-      getWheelSpeeds(0, 0, -150, speedVector);
-   }
-   setWheelSpeed(speedVector);
-   delay(timeTwoPiRotation);
-   motorStop();
-   delay(3200);
-}
-
 /*
    Calculates the speed of each wheel and then runs.
     - forwardSpeed positive forward
@@ -130,39 +94,14 @@ void listen(int (&response)[3]){
       response[i] = atoi(token);
       token = strtok(NULL, " ");
    }
-
-   Serial.println("speed is: ");
-   Serial.println(response[0]);
-   Serial.println(response[1]);
-   Serial.println(response[2]);
-
-   // this should move the car in forwardSpeed-direction
-   
+  
 }
-
-
 
 void loop()
 {
-   // response contains:
-   // forwardSpeed, sidewaysSpeed, rotationSpeed
-   int response[3];
+  int response[3];
    listen(response);
    runWheels(response[0], response[1], response[2]);
-   //runWheels(100, 100, 100);
-   //delay(5000);
-   //runWheels(-100, -100, -100);
-   //delay(5000);
-   
-   //runWheels(0,0,255);
-   //delay(5000);
-   //runWheels(255,0,0);
-   //delay(5000);
-   //runWheels(0,255,0);
-   //delay(5000);
-   //runWheels(120,120,0);
-   //delay(5000);
-
 }
 void motorStop()
 {
