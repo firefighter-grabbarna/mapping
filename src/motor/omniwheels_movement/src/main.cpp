@@ -9,7 +9,7 @@ void setup()
 {
    // 115200
    Serial.begin(BAUD_RATE);
-   Serial.println("Motor test!");
+   //Serial.println("Motor test!");
 
    // turn on motor dont crash code
    RightBackWheel.run(RELEASE);
@@ -78,28 +78,38 @@ void runWheels(int forwardSpeed, int sidewaysSpeed, int rotationSpeed){
 
 // Waits for input from serial and then updates response[] with said input
 void listen(int (&response)[3]){
+   while (true) {
+      while(!(Serial.available())){
+         ; // Busy wait mycket effektivt
+      }
+
+      String input = Serial.readStringUntil('\n');
+      String cpy = input;
+      cpy.trim();
+      if (cpy == "SCIP2.0") {
+         Serial.println("MOTOR");
+         Serial.println("");
+         continue;
+      } else if (cpy == "") {
+         continue;
+      }
+      char myArray[input.length() + 1];        //as 1 char space for null is also required
+      strcpy(myArray, input.c_str());    
    
-   while(!(Serial.available())){
-      ; // Busy wait mycket effektivt
-   }
+      char * token = strtok(myArray, " ");   // Extract the first token
 
-   String input = Serial.readStringUntil('\n');
-   char myArray[input.length() + 1];        //as 1 char space for null is also required
-   strcpy(myArray, input.c_str());    
-  
-   char * token = strtok(myArray, " ");   // Extract the first token
-
-   // loop through the string to extract all other tokens
-   for(int i = 0; token != NULL; i++){
-      response[i] = atoi(token);
-      token = strtok(NULL, " ");
+      // loop through the string to extract all other tokens
+      for(int i = 0; token != NULL; i++){
+         response[i] = atoi(token);
+         token = strtok(NULL, " ");
+      }
+      break;
    }
-  
 }
 
 void loop()
 {
-  int response[3];
+   int response[3];
    listen(response);
    runWheels(response[0], response[1], response[2]);
 }
