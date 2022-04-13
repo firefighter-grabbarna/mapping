@@ -26,19 +26,16 @@ static void ensure(bool condition, std::string number) {
     }
 }
 
-Lidar::Lidar(const char *filename) : serial(filename) {
-    // Clear the serial communication
-    this->serial.output("\n"); // Ensure there is no partially sent command
-    this->serial.readUntilBlock(); // Wait for the response from the partial command
+Lidar::Lidar(Serial &&serial) : serial(std::move(serial)) {
 
-    // Initialize the protocol
-    auto initRes = this->query("SCIP2.0");
-    ensure(initRes.size() == 2, "1a");
-    ensureStr(initRes[0], "SCIP2.0", "1b");
-    //ensureStr(initRes[1], "0", "1c");
+    // // Initialize the protocol
+    // auto initRes = this->serial.query("SCIP2.0");
+    // ensure(initRes.size() == 2, "1a");
+    // ensureStr(initRes[0], "SCIP2.0", "1b");
+    // //ensureStr(initRes[1], "0", "1c");
 
     // Request parameters
-    auto paramRes = this->query("PP");
+    auto paramRes = this->serial.query("PP");
     ensure(paramRes.size() >= 2, "2a");
     ensureStr(paramRes[0], "PP", "2b");
     ensureStr(paramRes[1], "00P", "2c");
@@ -68,7 +65,7 @@ Lidar::Lidar(const char *filename) : serial(filename) {
         << ", " << this->amin << ".." << this->afrt << ".." << this->amax
         << "; R: " << this->rpm << std::endl;
 
-    auto laserRes = this->query("BM");
+    auto laserRes = this->serial.query("BM");
     ensure(laserRes.size() == 2, "3a");
     ensureStr(laserRes[0], "BM", "3b");
     if ((laserRes[1] != "00P") && (laserRes[1] != "02R")) {
@@ -81,7 +78,7 @@ Lidar::~Lidar() {}
 std::vector<int> Lidar::scan() {
     char query[16];
     snprintf(query, sizeof(query), "GD%04d%04d01", this->amin, this->amax);
-    auto scanRes = this->query(query);
+    auto scanRes = this->serial.query(query);
 
     ensure(scanRes.size() > 3, "4a");
     ensureStr(scanRes[0], query, "4b");
@@ -116,21 +113,4 @@ std::vector<int> Lidar::scan() {
     std::rotate(values.begin(), values.end() - right_rotate, values.end());
 
     return values;
-}
-
-std::vector<std::string> Lidar::query(const char *query) {
-    //std::cout << "W: " << query << std::endl;
-
-    this->serial.output(query);
-    this->serial.output("\n");
-
-    std::vector<std::string> lines;
-    while (true) {
-        std::string line = this->serial.input();
-        if (line.empty()) break;
-        //std::cout << "R: " << line << std::endl;
-        lines.push_back(line);
-    }
-
-    return lines;
 }

@@ -8,7 +8,7 @@
 class Lidar {
 public:
     // Connects to the lidar.
-    Lidar(const char *filename);
+    Lidar(Serial &&serial);
     // Disconnects from the lidar.
     ~Lidar();
     // Performs a scan. Returns the distances of all angles in counter-clockwise
@@ -19,7 +19,4 @@ private:
     Serial serial;
     // The parameters.
     unsigned dmin, dmax, ares, amin, amax, afrt, rpm;
-
-    // Executes a command and waits for the response.
-    std::vector<std::string> query(const char *command);
 };

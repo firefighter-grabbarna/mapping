@@ -24,11 +24,23 @@ Serial::Serial(const char *filename) {
 	term.c_oflag &= ~(ONLCR | ONOCR | OCRNL | OLCUC);
 	term.c_lflag &= ~(ECHO | ICANON);
 	term.c_iflag &= ~(INPCK | ISTRIP);
+    term.c_iflag |= IGNCR;
 
 	term.c_cc[VMIN] = 0;
 	term.c_cc[VTIME] = 0;
 
 	tcsetattr(fd, TCSAFLUSH, &term);
+
+    usleep(500'000);
+
+    // Clear the serial communication
+    this->output("\n"); // Ensure there is no partially sent command
+    this->readUntilBlock(); // Wait for the response from the partial command
+}
+
+Serial::Serial(Serial &&other) {
+    this->fd = other.fd;
+    other.fd = -1;
 }
 
 Serial::~Serial() {
@@ -81,4 +93,21 @@ void Serial::readUntilBlock() {
             break;
         }
     }
+}
+
+std::vector<std::string> Serial::query(const char *query) {
+    //std::cout << "W: " << query << std::endl;
+
+    this->output(query);
+    this->output("\n");
+
+    std::vector<std::string> lines;
+    while (true) {
+        std::string line = this->input();
+        //std::cout << "R: " << line << std::endl;
+        if (line.empty()) break;
+        lines.push_back(line);
+    }
+
+    return lines;
 }
