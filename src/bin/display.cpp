@@ -2,8 +2,8 @@
 #include "../common/lidar.hpp"
 #include "../common/math.hpp"
 #include "../common/util.hpp"
-#include "../common/window/window.hpp"
-#include "../common/window/canvas.hpp"
+#include "../common/window.hpp"
+#include "../common/canvas.hpp"
 
 #include <array>
 #include <cmath>

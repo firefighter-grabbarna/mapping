@@ -1,7 +1,7 @@
 #pragma once
 
 #include "window.hpp"
-#include "../math.hpp"
+#include "math.hpp"
 
 class Canvas {
 public:

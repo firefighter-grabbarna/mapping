@@ -1,6 +1,6 @@
 #include "canvas.hpp"
 #include "window.hpp"
-#include "../math.hpp"
+#include "math.hpp"
 
 #include <algorithm>
 
