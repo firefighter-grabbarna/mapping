@@ -5,6 +5,7 @@
 #include <cmath>
 
 #include "../common/lidar.hpp"
+#include "../common/motors.hpp"
 #include "../common/serial.hpp"
 #include "../common/util.hpp"
 
@@ -38,11 +39,13 @@ int main(int argc, const char** argv) {
 
     if (!lidarSerial.has_value()) panic("lidar not connected");
     if (!motorsSerial.has_value()) panic("motors not connected");
-    //if (!cannonSerial.has_value()) panic("cannon not connected");
+    // if (!cannonSerial.has_value()) panic("cannon not connected");
 
     Lidar lidar(std::move(lidarSerial.value()));
-    Serial motors(std::move(motorsSerial.value()));
-    //Serial cannon(std::move(cannonSerial.value()));
+    // Serial motors(std::move(motorsSerial.value()));
+    Motors motors(std::move(motorsSerial.value()));
+    // Serial cannon(std::move(cannonSerial.value()));
+
 
     while (true) {
         std::vector<int> distances = lidar.scan();
@@ -61,19 +64,25 @@ int main(int argc, const char** argv) {
             }
         }
 
-        float vx = -sin(bestAngle) * 250.0;
-        float vy = -cos(bestAngle) * 250.0;
-        float vr = 0.0;
+        Vec2 direction = Vec2(0.0, -1.0).rotate(bestAngle);
+        float rotVel = (bestAngle - 3.141592) / 2;
 
-        // Scale down so that the sum doesn't exceed 250
-        float scaleFactor = std::min(1.0, 250.0 / (fabs(vx) + fabs(vy) + fabs(vr)));
-        vx *= scaleFactor;
-        vy *= scaleFactor;
-        vr *= scaleFactor;
+        motors.setSpeed(-direction, 0);
+        // motors.setSpeed(Vec2(1.0, 0.0), 0.0);
 
-        char buf[128] = {};
-        snprintf(buf, sizeof(buf), "%d %d %d\n", (int) vy, (int) vx, (int) vr);
-        motors.output(buf);
+        // float vx = -sin(bestAngle) * 250.0;
+        // float vy = -cos(bestAngle) * 250.0;
+        // float vr = 0.0;
+
+        // // Scale down so that the sum doesn't exceed 250
+        // float scaleFactor = std::min(1.0, 250.0 / (fabs(vx) + fabs(vy) + fabs(vr)));
+        // vx *= scaleFactor;
+        // vy *= scaleFactor;
+        // vr *= scaleFactor;
+
+        // char buf[128] = {};
+        // snprintf(buf, sizeof(buf), "%d %d %d\n", (int) vy, (int) vx, (int) vr);
+        // motors.output(buf);
 
         std::cout << bestAngle << std::endl;
 

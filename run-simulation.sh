@@ -2,6 +2,10 @@
 
 cd "$(dirname "$0")"
 
-set -xe
+set -e
+
+echo "Compiling"
 make build/bin/simulation
+
+echo "Running"
 build/bin/simulation

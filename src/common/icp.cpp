@@ -176,6 +176,9 @@ Transform searchTransform(const Map& map, const std::vector<Point> &points) {
             bestCost = cost;
             best = guess;
         }
+        if (bestCost < 30) {
+            break;
+        }
     }
 
     return best;

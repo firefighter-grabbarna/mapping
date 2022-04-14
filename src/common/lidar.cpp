@@ -73,8 +73,6 @@ Lidar::Lidar(Serial &&serial) : serial(std::move(serial)) {
     }
 }
 
-Lidar::~Lidar() {}
-
 std::vector<int> Lidar::scan() {
     char query[16];
     snprintf(query, sizeof(query), "GD%04d%04d01", this->amin, this->amax);

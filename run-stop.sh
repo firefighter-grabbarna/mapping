@@ -2,10 +2,11 @@
 
 cd "$(dirname "$0")"
 
+shopt -s nullglob
 set -e
 
 echo "Compiling"
-make build/bin/display
+make build/bin/robot
 
 echo "Running"
-build/bin/display
+build/bin/robot /dev/ttyACM*
