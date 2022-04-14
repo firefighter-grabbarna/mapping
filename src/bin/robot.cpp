@@ -9,6 +9,11 @@
 #include "../common/serial.hpp"
 #include "../common/util.hpp"
 
+#include "../common/icp.hpp"
+#include "../common/math.hpp"
+#include "../common/window.hpp"
+#include "../common/canvas.hpp"
+
 int main(int argc, const char** argv) {
     std::optional<Serial> lidarSerial;
     std::optional<Serial> motorsSerial;
@@ -46,7 +51,7 @@ int main(int argc, const char** argv) {
     Motors motors(std::move(motorsSerial.value()));
     // Serial cannon(std::move(cannonSerial.value()));
 
-
+    /*
     while (true) {
         std::vector<int> distances = lidar.scan();
 
@@ -68,23 +73,83 @@ int main(int argc, const char** argv) {
         float rotVel = (bestAngle - 3.141592) / 2;
 
         motors.setSpeed(-direction, 0);
-        // motors.setSpeed(Vec2(1.0, 0.0), 0.0);
-
-        // float vx = -sin(bestAngle) * 250.0;
-        // float vy = -cos(bestAngle) * 250.0;
-        // float vr = 0.0;
-
-        // // Scale down so that the sum doesn't exceed 250
-        // float scaleFactor = std::min(1.0, 250.0 / (fabs(vx) + fabs(vy) + fabs(vr)));
-        // vx *= scaleFactor;
-        // vy *= scaleFactor;
-        // vr *= scaleFactor;
-
-        // char buf[128] = {};
-        // snprintf(buf, sizeof(buf), "%d %d %d\n", (int) vy, (int) vx, (int) vr);
-        // motors.output(buf);
 
         std::cout << bestAngle << std::endl;
 
+    }*/
+
+    const Map map({
+        {{0, 980}, {975, 980}},
+        {{975, 980}, {975, 0}},
+        {{975, 0}, {250, 0}},
+        {{250, 0}, {250, 585}},
+        {{250, 585}, {0, 585}},
+        {{0, 585}, {0, 980}},
+    });
+
+    Transform guess;
+
+    Point target(600, 600);
+
+    //Window window(900, 600, "robot");
+
+    //while (!window.shouldClose()) {
+    while (true) {
+        //window.fill({ 50, 50, 50 });
+
+        std::vector<Point> scanned;
+
+        std::vector<int> distances = lidar.scan();
+        for (size_t i = 0; i < distances.size(); i++) {
+            if (distances[i] < 0 || distances[i] > 4000) continue;
+
+            float angle = (float) i / distances.size() * 3.141592 * 2;
+            scanned.push_back((Vec2(1, 0).rotate(angle) * distances[i]).point());
+        }
+
+        if (scanned.size() > 30) {
+            guess = updateTransform(guess, map, scanned);
+
+            float cost = transformCost(guess, map, scanned);
+            if (cost > 30.0) {
+                motors.setSpeed({0, 0}, 0);
+                std::cout << "Desync detected (" << cost << ")" << std::endl << std::endl;
+                guess = searchTransform(map, scanned);
+            }
+            std::cout << "\x1b[A\x1b[K" "Cost: " << cost << std::endl;
+        }
+
+        Vec2 direction = guess.offset.point() - target;
+
+        Vec2 dirSpeed = direction / 100;
+        if (dirSpeed.mag() > 1)
+            dirSpeed = dirSpeed / dirSpeed.mag();
+
+        float pi = 3.141592654;
+        float angleDiff = guess.rotation.radians;
+
+        float rotSpeed = angleDiff * -1;
+        if (rotSpeed > 1) rotSpeed = 1;
+        if (rotSpeed < -1) rotSpeed = -1;
+
+        motors.setSpeed(dirSpeed.rotate(-guess.rotation + 3.1415/2), rotSpeed);
+        /*
+        Canvas canvas(&window, { 635, 310 }, 1500);
+
+        for (const Line &line : map.walls) {
+            canvas.line(line.p1, line.p2, { 100, 100, 100 });
+        }
+
+        for (const Point &point : scanned) {
+            canvas.line(
+                guess.applyTo(Point(0, 0)),
+                guess.applyTo(point),
+                {127, 255, 127}
+            );
+        }
+
+        window.redraw();
+        */
     }
+    
 }

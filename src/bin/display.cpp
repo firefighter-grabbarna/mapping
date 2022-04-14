@@ -15,20 +15,41 @@ const int width = 900;
 const int height = 600;
 const char* windowName = "Lidar";
 
-int main() {
+int main(int argc, const char **argv) {
     const Map map({
-        {{1270, 0}, {1270, 500}},
-        {{0, 0}, {1270, 0}},
-        {{0, 0}, {0, 620}},
-        {{0, 620}, {620, 620}},
-        {{620, 620}, {620, 200}},
-        {{620, 200}, {730, 200}},
+        {{0, 980}, {975, 980}},
+        {{975, 980}, {975, 0}},
+        {{975, 0}, {250, 0}},
+        {{250, 0}, {250, 585}},
+        {{250, 585}, {0, 585}},
+        {{0, 585}, {0, 980}},
     });
 
     std::srand(time(0));
 
-    // Connect to the lidar.
-    Lidar lidar("/dev/ttyACM0");
+    std::optional<Serial> lidarSerial;
+
+    for (int i = 1; i < argc; i++) {
+        std::string entryPath = argv[i];
+
+        std::cout << entryPath << std::endl;
+
+        Serial serial(entryPath.c_str());
+
+
+        auto response = serial.query("SCIP2.0");
+        if (response.empty()) continue;
+
+        if (response[0] == "SCIP2.0") {
+            lidarSerial.emplace(std::move(serial));
+            std::cout << "Lidar connected" << std::endl;
+        }
+    }
+
+    if (!lidarSerial.has_value()) panic("lidar not connected");
+    // if (!cannonSerial.has_value()) panic("cannon not connected");
+
+    Lidar lidar(std::move(lidarSerial.value()));
     
     // The guessed position of the robot.
     Transform guess;
@@ -44,7 +65,7 @@ int main() {
         for (size_t i = 0; i < distances.size(); i++) {
             if (distances[i] < 0 || distances[i] > 4000) continue;
 
-            float angle = -(float) i / distances.size() * 3.141592 * 2;
+            float angle = (float) i / distances.size() * 3.141592 * 2;
             scanned.push_back((Vec2(1, 0).rotate(angle) * distances[i]).point());
         }
 
@@ -52,7 +73,7 @@ int main() {
             guess = updateTransform(guess, map, scanned);
 
             float cost = transformCost(guess, map, scanned);
-            if (cost > 40.0) {
+            if (cost > 30.0) {
                 std::cout << "Desync detected (" << cost << ")" << std::endl << std::endl;
                 guess = searchTransform(map, scanned);
             }

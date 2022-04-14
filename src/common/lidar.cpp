@@ -97,8 +97,9 @@ std::vector<int> Lidar::scan() {
             value = value * 64 + (unsigned) data[j] - '0';
         }
 
-        if ((value < this->dmin) || (value > this->dmax)) value = -1;
-        values.push_back(value);
+        // -20 seems to correct the distance
+        if ((value < this->dmin + 20) || (value > this->dmax)) value = -1;
+        values.push_back(value - 20);
     }
 
     // Extend to the full angular resolution

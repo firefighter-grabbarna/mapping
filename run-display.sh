@@ -8,4 +8,4 @@ echo "Compiling"
 make build/bin/display
 
 echo "Running"
-build/bin/display
+build/bin/display /dev/ttyACM*

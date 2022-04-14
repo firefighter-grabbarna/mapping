@@ -163,7 +163,7 @@ Transform searchTransform(const Map& map, const std::vector<Point> &points) {
     Transform best;
     float bestCost = INFINITY;
 
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < 100; i++) {
         Transform guess(
             Rotation(randomFloat(-3.14, 3.14)),
             Vec2(randomFloat(minX, maxX), randomFloat(minY, maxY))
