@@ -26,19 +26,19 @@ int main(int argc, const char** argv) {
 
         if (response[0] == "SCIP2.0") {
             lidarSerial.emplace(std::move(serial));
+            std::cout << "Lidar connected" << std::endl;
         } else if (response[0] == "MOTOR") {
             motorsSerial.emplace(std::move(serial));
+            std::cout << "Motors connected" << std::endl;
         } else if (response[0] == "CANNON") {
             cannonSerial.emplace(std::move(serial));
+            std::cout << "Cannon connected" << std::endl;
         }
     }
 
-    std::cout << "Lidar " << (lidarSerial.has_value() ? "connected" : "not connected") << std::endl;
-    std::cout << "Motors " << (motorsSerial.has_value() ? "connected" : "not connected") << std::endl;
-    //std::cout << "Cannon " << (cannonSerial.has_value() ? "connected" : "not connected") << std::endl;
-
-    if (!lidarSerial.has_value() || !motorsSerial.has_value() /*|| !cannonSerial.has_value()*/)
-        panic("not all components connected");
+    if (!lidarSerial.has_value()) panic("lidar not connected");
+    if (!motorsSerial.has_value()) panic("motors not connected");
+    //if (!cannonSerial.has_value()) panic("cannon not connected");
 
     Lidar lidar(std::move(lidarSerial.value()));
     Serial motors(std::move(motorsSerial.value()));
@@ -53,7 +53,7 @@ int main(int argc, const char** argv) {
         for (size_t i = 0; i < distances.size(); i++) {
             if (distances[i] < 0 || distances[i] > 4000) continue;
 
-            float angle = -(float) i / distances.size() * 3.141592 * 2;
+            float angle = (float) i / distances.size() * 3.141592 * 2;
 
             if (distances[i] < bestDist) {
                 bestDist = distances[i];
@@ -61,11 +61,18 @@ int main(int argc, const char** argv) {
             }
         }
 
-        float vel_x = cos(bestAngle) * 150.0;
-        float vel_y = sin(bestAngle) * 150.0;
+        float vx = -sin(bestAngle) * 250.0;
+        float vy = -cos(bestAngle) * 250.0;
+        float vr = 0.0;
+
+        // Scale down so that the sum doesn't exceed 250
+        float scaleFactor = std::min(1.0, 250.0 / (fabs(vx) + fabs(vy) + fabs(vr)));
+        vx *= scaleFactor;
+        vy *= scaleFactor;
+        vr *= scaleFactor;
 
         char buf[128] = {};
-        snprintf(buf, sizeof(buf), "%d %d 0\n", -(int) vel_x, (int) vel_y);
+        snprintf(buf, sizeof(buf), "%d %d %d\n", (int) vy, (int) vx, (int) vr);
         motors.output(buf);
 
         std::cout << bestAngle << std::endl;
