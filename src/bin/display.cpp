@@ -49,7 +49,31 @@ int main(int argc, const char **argv) {
     if (!lidarSerial.has_value()) panic("lidar not connected");
     // if (!cannonSerial.has_value()) panic("cannon not connected");
 
+
     Lidar lidar(std::move(lidarSerial.value()));
+
+    while (true) {
+        float closestDistance = 9999.0;
+        Vec2 closestPoint;
+
+        std::vector<int> distances = lidar.scan();
+        for (size_t i = 0; i < distances.size(); i++) {
+            if (distances[i] < 0 || distances[i] > 4000) continue;
+
+            float angle = (float) i / distances.size() * 3.141592 * 2;
+
+            if (distances[i] < closestDistance) {
+                closestDistance = distances[i];
+                closestPoint = Vec2(0, -1).rotate(angle) * distances[i];
+            }
+        }
+
+        std::cout << closestPoint.x << " " << closestPoint.y << std::endl;
+    }
+
+
+
+    /*
     
     // The guessed position of the robot.
     Transform guess;
@@ -96,6 +120,7 @@ int main(int argc, const char **argv) {
 
         window.redraw();
     }
+    */
 
     return 0;
 }

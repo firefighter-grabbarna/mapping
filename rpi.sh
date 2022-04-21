@@ -28,6 +28,13 @@ run)
     copy
     connect "firefighter-grabbarna/run-robot.sh"
     ;;
+start)
+    copy
+    connect "firefighter-grabbarna/bg-start.sh"
+    ;;
+stop)
+    connect "firefighter-grabbarna/bg-stop.sh"
+    ;;
 *)
     echo "Usage:"
     echo "$0 date   Sets the date to the current date"

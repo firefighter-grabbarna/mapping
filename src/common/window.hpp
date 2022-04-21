@@ -15,6 +15,8 @@ public:
     Window(int width, int height, const char *windowName);
     // Closes the window.
     ~Window();
+
+    Window(Window &&window);
     // Polls for events and tests if the window should close.
     bool shouldClose();
     // Fills the window with the specified color.

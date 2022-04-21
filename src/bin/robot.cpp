@@ -14,6 +14,126 @@
 #include "../common/window.hpp"
 #include "../common/canvas.hpp"
 
+// const Map map({
+//     {{0, 980}, {975, 980}},
+//     {{975, 980}, {975, 0}},
+//     {{975, 0}, {250, 0}},
+//     {{250, 0}, {250, 585}},
+//     {{250, 585}, {0, 585}},
+//     {{0, 585}, {0, 980}},
+// });
+
+const Map map({
+    {{0, 2400}, {700, 2400}}, 
+    {{700, 2400}, {2400, 2400}}, 
+    {{2400, 2400}, {2400, 900}}, 
+    {{2400, 900}, {2400, 0}}, 
+    {{2400, 0}, {1180, 0}}, 
+    {{1180, 0}, {0, 0}}, 
+    {{0, 0}, {0, 1020}}, 
+    {{0, 1020}, {0, 2400}}, 
+    {{700, 2400}, {700, 1490}}, 
+    {{700, 1490}, {470, 1490}}, 
+    {{710, 470}, {710, 1020}}, 
+    {{710, 1020}, {0, 1020}}, 
+    {{1180, 0}, {1180, 440}}, 
+    {{1180, 900}, {2400, 900}}, 
+    {{1170, 1380}, {1170, 1930}}, 
+    {{1170, 1930}, {1920, 1930}}, 
+    {{1920, 1930}, {1920, 1380}}, 
+    {{1920, 1380}, {1640, 1380}}, 
+});
+
+class Navigator {
+public:
+    std::optional<Window> window;
+
+    Lidar lidar;
+    Motors motors;
+
+    Transform position;
+
+    Navigator(std::optional<Window> &&window, Serial &&lidar, Serial &&motors):
+        window(std::move(window)),
+        lidar(std::move(lidar)),
+        motors(std::move(motors)),
+        position() {}
+
+    // Uses the lidar to find the current position. Stops the motors if a full
+    // search is needed.
+    void updatePosition() {
+        std::vector<Point> scanned;
+
+        std::vector<int> distances = this->lidar.scan();
+        for (size_t i = 0; i < distances.size(); i++) {
+            if (distances[i] < 0 || distances[i] > 4000) continue;
+
+            float angle = (float) i / distances.size() * 3.141592 * 2;
+            scanned.push_back((Vec2(0, 1).rotate(angle) * distances[i]).point());
+        }
+
+        if (scanned.size() > 30) {
+            this->position = updateTransform(this->position, map, scanned);
+
+            float cost = transformCost(this->position, map, scanned);
+            if (cost > 50.0) {
+                this->motors.setSpeed({0, 0}, 0);
+                std::cout << "Desync detected (" << cost << ")" << std::endl << std::endl;
+                this->position = searchTransform(map, scanned);
+            }
+            std::cout << "\x1b[A\x1b[K" "Cost: " << cost << std::endl;
+        }
+
+        if (window.has_value()) {
+            auto &win = window.value();
+
+            win.fill({ 50, 50, 50 });
+
+            Canvas canvas(&win, { 1200, 1200 }, 3000);
+
+            for (const Line &line : map.walls) {
+                canvas.line(line.p1, line.p2, { 100, 100, 100 });
+            }
+
+            {
+                Point target = this->position.applyTo(Point(0, 0));
+                rightCanvas.line(
+                    target - Vec2(30, 30),
+                    target + Vec2(30, 30),
+                    {255, 127, 127}
+                );
+                rightCanvas.line(
+                    target - Vec2(30, -30),
+                    target + Vec2(30, -30),
+                    {255, 127, 127}
+                );
+            }
+
+            for (const Point &point : scanned) {
+                // canvas.line(
+                //     this->position.applyTo(Point(0, 0)),
+                //     this->position.applyTo(point),
+                //     {127, 255, 127}
+                // );
+
+                Point target = this->position.applyTo(point);
+                rightCanvas.line(
+                    target - Vec2(10, 10),
+                    target + Vec2(10, 10),
+                    {127, 255, 127}
+                );
+                rightCanvas.line(
+                    target - Vec2(10, -10),
+                    target + Vec2(10, -10),
+                    {127, 255, 127}
+                );
+            }
+
+            win.redraw();
+        }
+    }
+};
+
 int main(int argc, const char** argv) {
     std::optional<Serial> lidarSerial;
     std::optional<Serial> motorsSerial;
@@ -25,7 +145,6 @@ int main(int argc, const char** argv) {
         std::cout << entryPath << std::endl;
 
         Serial serial(entryPath.c_str());
-
 
         auto response = serial.query("SCIP2.0");
         if (response.empty()) continue;
@@ -46,110 +165,51 @@ int main(int argc, const char** argv) {
     if (!motorsSerial.has_value()) panic("motors not connected");
     // if (!cannonSerial.has_value()) panic("cannon not connected");
 
-    Lidar lidar(std::move(lidarSerial.value()));
-    // Serial motors(std::move(motorsSerial.value()));
-    Motors motors(std::move(motorsSerial.value()));
     // Serial cannon(std::move(cannonSerial.value()));
 
-    /*
-    while (true) {
-        std::vector<int> distances = lidar.scan();
+    std::optional<Window> window;
 
-        float bestAngle = 0;
-        int bestDist = 4000;
+    if (false) {
+        Window win(900, 600, "robot");
+        window.emplace(std::move(win));
+    }
 
-        for (size_t i = 0; i < distances.size(); i++) {
-            if (distances[i] < 0 || distances[i] > 4000) continue;
+    Navigator navigator(
+        std::move(window),
+        std::move(lidarSerial.value()),
+        std::move(motorsSerial.value())
+    );
 
-            float angle = (float) i / distances.size() * 3.141592 * 2;
+    Point target(800, 1200);
 
-            if (distances[i] < bestDist) {
-                bestDist = distances[i];
-                bestAngle = angle;
-            }
-        }
 
-        Vec2 direction = Vec2(0.0, -1.0).rotate(bestAngle);
-        float rotVel = (bestAngle - 3.141592) / 2;
+    while (!navigator.window.has_value() || !navigator.window.value().shouldClose()) {
 
-        motors.setSpeed(-direction, 0);
+        navigator.updatePosition();
 
-        std::cout << bestAngle << std::endl;
+        Point robotPos = navigator.position.offset.point();
+            //+ Vec2(0, 100).rotate(navigator.position.rotation);
 
-    }*/
+        
+        // Vec2 direction = target - robotPos;
 
-    const Map map({
-        {{0, 980}, {975, 980}},
-        {{975, 980}, {975, 0}},
-        {{975, 0}, {250, 0}},
-        {{250, 0}, {250, 585}},
-        {{250, 585}, {0, 585}},
-        {{0, 585}, {0, 980}},
-    });
+        // Vec2 dirSpeed = direction / 100;
+        // if (dirSpeed.mag() > 1) {
+        //     dirSpeed = dirSpeed / dirSpeed.mag();
+        // }
 
-    Transform guess;
+        
+        // // //float pi = 3.141592654;
+        // // float angleDiff = navigator.position.rotation.radians;
 
-    Point target(600, 600);
+        // // float rotSpeed = angleDiff * -1;
+        // // if (rotSpeed > 1) rotSpeed = 1;
+        // // if (rotSpeed < -1) rotSpeed = -1;
+        
+        // float rotSpeed = 0;
 
-    //Window window(900, 600, "robot");
+        navigator.motors.setSpeed(dirSpeed.rotate(-navigator.position.rotation), rotSpeed);
 
-    //while (!window.shouldClose()) {
-    while (true) {
-        //window.fill({ 50, 50, 50 });
-
-        std::vector<Point> scanned;
-
-        std::vector<int> distances = lidar.scan();
-        for (size_t i = 0; i < distances.size(); i++) {
-            if (distances[i] < 0 || distances[i] > 4000) continue;
-
-            float angle = (float) i / distances.size() * 3.141592 * 2;
-            scanned.push_back((Vec2(1, 0).rotate(angle) * distances[i]).point());
-        }
-
-        if (scanned.size() > 30) {
-            guess = updateTransform(guess, map, scanned);
-
-            float cost = transformCost(guess, map, scanned);
-            if (cost > 30.0) {
-                motors.setSpeed({0, 0}, 0);
-                std::cout << "Desync detected (" << cost << ")" << std::endl << std::endl;
-                guess = searchTransform(map, scanned);
-            }
-            std::cout << "\x1b[A\x1b[K" "Cost: " << cost << std::endl;
-        }
-
-        Vec2 direction = guess.offset.point() - target;
-
-        Vec2 dirSpeed = direction / 100;
-        if (dirSpeed.mag() > 1)
-            dirSpeed = dirSpeed / dirSpeed.mag();
-
-        float pi = 3.141592654;
-        float angleDiff = guess.rotation.radians;
-
-        float rotSpeed = angleDiff * -1;
-        if (rotSpeed > 1) rotSpeed = 1;
-        if (rotSpeed < -1) rotSpeed = -1;
-
-        motors.setSpeed(dirSpeed.rotate(-guess.rotation + 3.1415/2), rotSpeed);
-        /*
-        Canvas canvas(&window, { 635, 310 }, 1500);
-
-        for (const Line &line : map.walls) {
-            canvas.line(line.p1, line.p2, { 100, 100, 100 });
-        }
-
-        for (const Point &point : scanned) {
-            canvas.line(
-                guess.applyTo(Point(0, 0)),
-                guess.applyTo(point),
-                {127, 255, 127}
-            );
-        }
-
-        window.redraw();
-        */
     }
     
 }

@@ -21,7 +21,17 @@ Window::Window(int width, int height, const char *windowName) {
     glfwMakeContextCurrent(this->window);
 }
 
+Window::Window(Window &&other) {
+    this->width = other.width;
+    this->height = other.height;
+    this->buffer = other.buffer;
+    this->window = other.window;
+    other.buffer = nullptr;
+}
+
 Window::~Window() {
+    if (!this->buffer) return;
+
     delete this->buffer;
 
     glfwDestroyWindow(window);
