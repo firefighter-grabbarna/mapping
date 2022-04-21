@@ -8,11 +8,11 @@
 #include "../common/motors.hpp"
 #include "../common/serial.hpp"
 #include "../common/util.hpp"
-
 #include "../common/icp.hpp"
 #include "../common/math.hpp"
 #include "../common/window.hpp"
 #include "../common/canvas.hpp"
+#include "../common/pins.hpp"
 
 // const Map map({
 //     {{0, 980}, {975, 980}},
@@ -97,12 +97,12 @@ public:
 
             {
                 Point target = this->position.applyTo(Point(0, 0));
-                rightCanvas.line(
+                canvas.line(
                     target - Vec2(30, 30),
                     target + Vec2(30, 30),
                     {255, 127, 127}
                 );
-                rightCanvas.line(
+                canvas.line(
                     target - Vec2(30, -30),
                     target + Vec2(30, -30),
                     {255, 127, 127}
@@ -117,12 +117,12 @@ public:
                 // );
 
                 Point target = this->position.applyTo(point);
-                rightCanvas.line(
+                canvas.line(
                     target - Vec2(10, 10),
                     target + Vec2(10, 10),
                     {127, 255, 127}
                 );
-                rightCanvas.line(
+                canvas.line(
                     target - Vec2(10, -10),
                     target + Vec2(10, -10),
                     {127, 255, 127}
@@ -132,9 +132,19 @@ public:
             win.redraw();
         }
     }
+
+    void runMotors(Vec2 dirSpeed, float rotSpeed) {
+        this->motors.setSpeed(dirSpeed.rotate(-this->position.rotation), rotSpeed);
+    }
 };
 
 int main(int argc, const char** argv) {
+
+
+    pinMode(4, "in");
+    std::cout << pinRead(4) << std::endl;
+    if (true) return 0;
+
     std::optional<Serial> lidarSerial;
     std::optional<Serial> motorsSerial;
     std::optional<Serial> cannonSerial;
@@ -208,8 +218,8 @@ int main(int argc, const char** argv) {
         
         // float rotSpeed = 0;
 
-        navigator.motors.setSpeed(dirSpeed.rotate(-navigator.position.rotation), rotSpeed);
-
-    }
-    
+        Vec2 dirSpeed(0, 0);
+        float rotSpeed = 0;
+        navigator.runMotors(dirSpeed, rotSpeed);
+    }    
 }

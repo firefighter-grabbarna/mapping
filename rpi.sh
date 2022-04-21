@@ -4,7 +4,8 @@ cd "$(dirname "$0")"
 
 DEVICE="enp1s0"
 #DEVICE=enx00e04c78bf20
-ADDR="fe80::bef4:5354:913b:fd01%$DEVICE"
+#ADDR="fe80::bef4:5354:913b:fd01%$DEVICE" #rpi 2
+ADDR="fe80::3545:8d5:24f3:fe87%$DEVICE" #rpi 4
 
 function copy {
     rsync -rcpv --exclude={.git,breezyslam,build,data,resurser,src/canon,src/motor} \
