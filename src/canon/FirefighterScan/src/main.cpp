@@ -8,13 +8,15 @@ static int X_SERVO_PIN = 3;
 static int X_FLAME_PIN = A0;
 static int Y_SERVO_PIN = 5;
 static int Y_FLAME_PIN = A0;
+static int BUTTON_GROUND = 8;
+static int BUTTON_PIN = 6;
+static int TRANSISTOR_PIN = 4;
 static short VALS[180];
 
 Servo xAxisServo;
 Servo yAxisServo;
 
 void setup() {
-  // put your setup code here, to run once:
 
   // initialize serial communication @ 9600 baud:
   Serial.begin(9600);  
@@ -22,64 +24,17 @@ void setup() {
   pinMode(X_FLAME_PIN, INPUT);
   pinMode(Y_SERVO_PIN, OUTPUT);
   pinMode(Y_FLAME_PIN, INPUT);
+  pinMode(BUTTON_GROUND, OUTPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  pinMode(TRANSISTOR_PIN, OUTPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
   
+  digitalWrite(TRANSISTOR_PIN, LOW);
+  digitalWrite(BUTTON_GROUND, LOW);
+  digitalWrite(LED_BUILTIN, LOW);
+
   xAxisServo.attach(X_SERVO_PIN);
   yAxisServo.attach(Y_SERVO_PIN);
-}
-
-  /*
-  *
-  * Returns the degree which gives the largest reading on flamePin 
-  * from one cycle of 0-180 degrees
-  * 
-  */  
-
-
-int getSmallestReading(Servo& servo, int flamePin, int minDegree, int maxDegree){
-  servo.write(minDegree);
-    
-  delay(400);
-  int nearestDegree = 0;
-  int smallestReading = 90000;
-  for (int degree = minDegree; degree < maxDegree; degree++){
-    int reading = analogRead(flamePin);
-    
-    //Serial.println(reading);
-    
-    servo.write(degree);
-    delay(50);
-    if(reading < smallestReading){
-      smallestReading = reading;
-      nearestDegree = degree;
-    }     
-  }
-  return nearestDegree;
-} 
-
-
-int getSmallestReading(Servo& servo, int flamePin){
-  getSmallestReading(servo, flamePin, 0, 180);
-} 
-
-/*
-  Moves the servo to the degree which returns the smallest
-  reading from the flame sensor 
-
-  Smallest reading is the one which is closest to the flame
-*/
-
-void moveToLargestReading(Servo& servo, int flamePin, int minDegree, int maxDegree) {
-  delay(100);
-  int degree = getSmallestReading(servo, flamePin, minDegree, maxDegree);
-  servo.write(degree);
-  //Serial.println(degree);
-  delay(400);
-
-}
-
-void moveToLargestReading(Servo& servo, int flamePin){
-  moveToLargestReading(servo, flamePin, 0, 180);
-
 }
 
 void read_along_axis(Servo& servo, int flame_pin, int startDegree, int maxDegree) {
@@ -139,32 +94,35 @@ int choose_degree_y() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  /*
-   * The idea is to scan one axis with the flame sensor, 
-   * get the servo degree for the largest value,
-   * then return the servo to the greatest degree.
-   */
-   //int val = analogRead(X_FLAME_PIN);
-   //int val = digitalRead(6);
-   
-   //Serial.println(val);
-   //delay(180);
-   if (Serial.available()) {
 
-    read_along_axis(xAxisServo, X_FLAME_PIN, 0, 180);
-    int degree = choose_degree();
-    xAxisServo.write(degree-9);
-    read_along_axis(yAxisServo, Y_FLAME_PIN, 45, 120);
-    degree = choose_degree_y();
-    yAxisServo.write(degree+11);
-    String s = Serial.readStringUntil('\n');
-    /*yAxisServo.write(Y_SERVO_REST_POS);
-    moveToLargestReading(xAxisServo, X_FLAME_PIN);
-    xAxisServo.write(xAxisServo.read()+Y_SERVO_VERTICAL_OFFSET);
-    delay(300);
-    moveToLargestReading(yAxisServo, Y_FLAME_PIN,45, 120);
-    xAxisServo.write(xAxisServo.read()-Y_SERVO_VERTICAL_OFFSET);  
-    */
+   if (Serial.available()) {
+    String command = Serial.readStringUntil('\n');
+    command.trim();
+    if (command == "SCIP2.0") {
+      Serial.println("CANNON");
+      Serial.println("");
+    } else if (command == "W") {
+      digitalWrite(LED_BUILTIN, HIGH);
+      while (digitalRead(BUTTON_PIN));
+      while (!digitalRead(BUTTON_PIN));
+      Serial.println("pressed");
+      Serial.println("");
+      digitalWrite(LED_BUILTIN, LOW);
+    } else if (command == "S") {
+      read_along_axis(xAxisServo, X_FLAME_PIN, 0, 180);
+      int degree = choose_degree();
+      xAxisServo.write(degree-9);
+      read_along_axis(yAxisServo, Y_FLAME_PIN, 75, 105);
+      degree = choose_degree_y();
+      yAxisServo.write(degree+11);   
+      delay(300);
+      digitalWrite(TRANSISTOR_PIN, HIGH);
+      delay(300);
+      digitalWrite(TRANSISTOR_PIN, LOW);
+    } else if (command == "A") {
+      int degree = choose_degree();
+      Serial.println(degree);
+      Serial.println("");
+    }
    }
   }
