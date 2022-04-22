@@ -3,9 +3,11 @@
 #include <optional>
 #include <utility>
 #include <cmath>
+#include <unistd.h>
 
 #include "../common/lidar.hpp"
 #include "../common/motors.hpp"
+#include "../common/cannon.hpp"
 #include "../common/serial.hpp"
 #include "../common/util.hpp"
 #include "../common/icp.hpp"
@@ -13,6 +15,9 @@
 #include "../common/window.hpp"
 #include "../common/canvas.hpp"
 #include "../common/pins.hpp"
+
+const int DISTANCE_PIN = 23;
+const int ALARM_PIN = 24;
 
 // const Map map({
 //     {{0, 980}, {975, 980}},
@@ -63,29 +68,45 @@ public:
     // search is needed.
     void updatePosition() {
         std::vector<Point> scanned;
+        
+        while (true) {
+            scanned.clear();
 
-        std::vector<int> distances = this->lidar.scan();
-        for (size_t i = 0; i < distances.size(); i++) {
-            if (distances[i] < 0 || distances[i] > 4000) continue;
+            std::vector<int> distances = this->lidar.scan();
+            for (size_t i = 0; i < distances.size(); i++) {
+                if (distances[i] < 0 || distances[i] > 4000) continue;
 
-            float angle = (float) i / distances.size() * 3.141592 * 2;
-            scanned.push_back((Vec2(0, 1).rotate(angle) * distances[i]).point());
-        }
-
-        if (scanned.size() > 30) {
-            this->position = updateTransform(this->position, map, scanned);
-
-            float cost = transformCost(this->position, map, scanned);
-            if (cost > 50.0) {
-                this->motors.setSpeed({0, 0}, 0);
-                std::cout << "Desync detected (" << cost << ")" << std::endl << std::endl;
-                this->position = searchTransform(map, scanned);
+                float angle = (float) i / distances.size() * 3.141592 * 2;
+                scanned.push_back((Vec2(0, 1).rotate(angle) * distances[i]).point());
             }
-            std::cout << "\x1b[A\x1b[K" "Cost: " << cost << std::endl;
+
+            if (scanned.size() > 30) {
+                this->position = updateTransform(this->position, map, scanned);
+
+                float cost = transformCost(this->position, map, scanned);
+                std::cout << "Cost: " << cost << std::endl;
+                if (cost > 50.0) {
+                    this->motors.setSpeed({0, 0}, 0);
+                    std::cout << "Desync detected" << std::endl;
+                    this->position = searchTransform(map, scanned);
+
+                    cost = transformCost(this->position, map, scanned);
+                    if (cost > 50.0) {
+                        std::cout << "Bad data (" << cost << ")" << std::endl;
+                        // Rescan, the last scan could not be found
+                        continue;
+                    }
+                }
+            }
+            break;
         }
 
         if (window.has_value()) {
             auto &win = window.value();
+
+            if (win.shouldClose()) {
+                panic("window closed");
+            }
 
             win.fill({ 50, 50, 50 });
 
@@ -138,12 +159,37 @@ public:
     }
 };
 
+// Drives to the specified point. Returns true if the point was reached,
+// false if the fire alarm was triggered.
+bool runToPoint(Point target, Navigator &navigator) {
+    while (true) {
+        navigator.updatePosition();
+
+        if (pinRead(ALARM_PIN) == 1) {
+            return false;
+        }
+
+        Point robotPos = navigator.position.offset.point();
+            //+ Vec2(0, 100).rotate(navigator.position.rotation);
+
+        Vec2 direction = target - robotPos;
+        
+        std::cout << direction.x << " " << direction.y << std::endl;
+
+        Vec2 dirSpeed = direction / 70;
+        if (dirSpeed.mag() > 1) {
+            dirSpeed = dirSpeed.normalize();
+            navigator.runMotors(dirSpeed, 0);
+        } else {
+            return true;
+        }
+    }
+}
+
 int main(int argc, const char** argv) {
 
-
-    pinMode(4, "in");
-    std::cout << pinRead(4) << std::endl;
-    if (true) return 0;
+    pinMode(DISTANCE_PIN, "in"); // avstånd
+    pinMode(ALARM_PIN, "in"); // brandvarnare
 
     std::optional<Serial> lidarSerial;
     std::optional<Serial> motorsSerial;
@@ -173,7 +219,7 @@ int main(int argc, const char** argv) {
 
     if (!lidarSerial.has_value()) panic("lidar not connected");
     if (!motorsSerial.has_value()) panic("motors not connected");
-    // if (!cannonSerial.has_value()) panic("cannon not connected");
+    if (!cannonSerial.has_value()) panic("cannon not connected");
 
     // Serial cannon(std::move(cannonSerial.value()));
 
@@ -190,36 +236,55 @@ int main(int argc, const char** argv) {
         std::move(motorsSerial.value())
     );
 
-    Point target(800, 1200);
 
+    Cannon cannon(std::move(cannonSerial.value()));
 
-    while (!navigator.window.has_value() || !navigator.window.value().shouldClose()) {
+    std::cout << "Locating" << std::endl;
+    navigator.updatePosition();
+    std::cout << "Position found" << std::endl;
 
-        navigator.updatePosition();
+    while (true) {
+        cannon.waitForButton();
+        std::cout << "Button pressed" << std::endl;
+        usleep(1'000'000);
+        std::cout << "Moving to the point" << std::endl;
+        Point target(800, 1200);
+        bool reached = runToPoint(target, navigator);
+        navigator.runMotors({ 0, 0 }, 0);
 
-        Point robotPos = navigator.position.offset.point();
-            //+ Vec2(0, 100).rotate(navigator.position.rotation);
+        if (!reached) {
+            std::cout << "Fire found" << std::endl;
+            cannon.aimAndShoot();
+        }
+    }
+
+    // while (!navigator.window.has_value() || !navigator.window.value().shouldClose()) {
+
+    //     navigator.updatePosition();
+
+    //     Point robotPos = navigator.position.offset.point();
+    //         //+ Vec2(0, 100).rotate(navigator.position.rotation);
 
         
-        // Vec2 direction = target - robotPos;
+    //     // Vec2 direction = target - robotPos;
 
-        // Vec2 dirSpeed = direction / 100;
-        // if (dirSpeed.mag() > 1) {
-        //     dirSpeed = dirSpeed / dirSpeed.mag();
-        // }
+    //     // Vec2 dirSpeed = direction / 100;
+    //     // if (dirSpeed.mag() > 1) {
+    //     //     dirSpeed = dirSpeed / dirSpeed.mag();
+    //     // }
 
         
-        // // //float pi = 3.141592654;
-        // // float angleDiff = navigator.position.rotation.radians;
+    //     // // //float pi = 3.141592654;
+    //     // // float angleDiff = navigator.position.rotation.radians;
 
-        // // float rotSpeed = angleDiff * -1;
-        // // if (rotSpeed > 1) rotSpeed = 1;
-        // // if (rotSpeed < -1) rotSpeed = -1;
+    //     // // float rotSpeed = angleDiff * -1;
+    //     // // if (rotSpeed > 1) rotSpeed = 1;
+    //     // // if (rotSpeed < -1) rotSpeed = -1;
         
-        // float rotSpeed = 0;
+    //     // float rotSpeed = 0;
 
-        Vec2 dirSpeed(0, 0);
-        float rotSpeed = 0;
-        navigator.runMotors(dirSpeed, rotSpeed);
-    }    
+    //     Vec2 dirSpeed(0, 0);
+    //     float rotSpeed = 0;
+    //     navigator.runMotors(dirSpeed, rotSpeed);
+    // }    
 }
