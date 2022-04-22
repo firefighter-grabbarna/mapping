@@ -15,6 +15,7 @@
 #include "../common/window.hpp"
 #include "../common/canvas.hpp"
 #include "../common/pins.hpp"
+#include "../common/nodemap.hpp"
 
 const int DISTANCE_PIN = 23;
 const int ALARM_PIN = 24;
@@ -57,12 +58,14 @@ public:
     Motors motors;
 
     Transform position;
+    NodeMap nodeMap;
 
     Navigator(std::optional<Window> &&window, Serial &&lidar, Serial &&motors):
         window(std::move(window)),
         lidar(std::move(lidar)),
         motors(std::move(motors)),
-        position() {}
+        position(),
+        nodeMap() {}
 
     // Uses the lidar to find the current position. Stops the motors if a full
     // search is needed.
@@ -93,6 +96,10 @@ public:
                     cost = transformCost(this->position, map, scanned);
                     if (cost > 50.0) {
                         std::cout << "Bad data (" << cost << ")" << std::endl;
+
+                        this->motors.setSpeed({0, 0}, 1);
+                        usleep(1'000'000);
+                        this->motors.setSpeed({0, 0}, 0);
                         // Rescan, the last scan could not be found
                         continue;
                     }
@@ -159,18 +166,19 @@ public:
     }
 };
 
+bool seesFire() {
+    //return pinRead(ALARM_PIN) == 1;
+    return false;
+}
+
 // Drives to the specified point. Returns true if the point was reached,
 // false if the fire alarm was triggered.
-bool runToPoint(Point target, Navigator &navigator) {
+void runToPoint(Point target, Navigator &navigator) {
     while (true) {
         navigator.updatePosition();
 
-        if (pinRead(ALARM_PIN) == 1) {
-            return false;
-        }
-
-        Point robotPos = navigator.position.offset.point();
-            //+ Vec2(0, 100).rotate(navigator.position.rotation);
+        Point robotPos = navigator.position.offset.point()
+            + Vec2(0, 45).rotate(navigator.position.rotation);
 
         Vec2 direction = target - robotPos;
         
@@ -181,15 +189,85 @@ bool runToPoint(Point target, Navigator &navigator) {
             dirSpeed = dirSpeed.normalize();
             navigator.runMotors(dirSpeed, 0);
         } else {
-            return true;
+            return;
         }
     }
 }
 
+void rotateToAngle(Rotation angle, Navigator &navigator) {
+    while (true) {
+        navigator.updatePosition();
+
+        float angleDiff = angle.radians - navigator.position.rotation.radians;
+
+        if (angleDiff > 3.141592) angleDiff -= 3.141592 * 2;
+        if (angleDiff < -3.141592) angleDiff += 3.141592 * 2;
+
+        if (angleDiff > 0.7) {
+            navigator.runMotors({0, 0}, angleDiff);
+        } else if (angleDiff < -0.7) {
+            navigator.runMotors({0, 0}, angleDiff);
+        } else {
+            navigator.runMotors({ 0, 0 }, 0);
+            break;
+        }
+    }
+}
+
+void followLineStep(Line line, Navigator &navigator) {
+    navigator.updatePosition();
+
+    Point robotPos = navigator.position.offset.point()
+        + Vec2(0, 45).rotate(navigator.position.rotation);
+
+    Point closest = line.pointClosestTo(robotPos);
+
+    Vec2 towardsEnd = (line.p2 - robotPos).normalize();
+    Vec2 towardsLine = (closest - robotPos).normalize();
+
+    float distance = (closest - robotPos).mag();
+    float factor = std::min(distance / 200.0, 1.0);
+
+    Vec2 direction = towardsEnd + (towardsLine - towardsEnd) * factor;
+
+    std::cout << direction.x << " " << direction.y << std::endl;
+
+    navigator.runMotors(direction.normalize(), 0);
+}
+
+void moveToRoom(int room, Navigator &navigator) {
+    navigator.updatePosition();
+    while (true) {
+        Point robotPos = navigator.position.offset.point()
+            + Vec2(0, 45).rotate(navigator.position.rotation);
+        Node *current = navigator.nodeMap.getCurrentNode(robotPos.x, robotPos.y);
+        Node *target = navigator.nodeMap.getRoomNode(room);
+
+        if (current == target) break;
+
+        std::vector<Point> path = navigator.nodeMap.getPath(current, target);
+        followLineStep({ path[0], path[1] }, navigator);
+    }
+    navigator.runMotors({ 0, 0 }, 0);
+}
+
+/*void followPath(std::vector<Point> path, Navigator &navigator) {
+    for (size_t i = 0; i < path.size() - 1; i++) {
+        Line line(path[i], path[i + 1]);
+        followLine(line, navigator);
+    }
+    navigator.runMotors({0, 0}, 0);
+}*/
+
 int main(int argc, const char** argv) {
 
-    pinMode(DISTANCE_PIN, "in"); // avstånd
-    pinMode(ALARM_PIN, "in"); // brandvarnare
+    //pinMode(DISTANCE_PIN, "in"); // avstånd
+    //pinMode(ALARM_PIN, "in"); // brandvarnare
+
+    //std::cout << "distance: " << pinRead(DISTANCE_PIN) << std::endl;
+    //std::cout << "alarm: " << pinRead(ALARM_PIN) << std::endl;
+
+    //if (true) return 0;
 
     std::optional<Serial> lidarSerial;
     std::optional<Serial> motorsSerial;
@@ -247,15 +325,47 @@ int main(int argc, const char** argv) {
         cannon.waitForButton();
         std::cout << "Button pressed" << std::endl;
         usleep(1'000'000);
-        std::cout << "Moving to the point" << std::endl;
-        Point target(800, 1200);
+        std::cout << "Following path" << std::endl;
+
+        moveToRoom(2, navigator);
+        rotateToAngle(-0.5, navigator);
+
+        usleep(1'000'000);
+
+        moveToRoom(1, navigator);
+        rotateToAngle(-1, navigator);
+
+        usleep(1'000'000);
+
+        moveToRoom(4, navigator);
+        rotateToAngle(-1.75, navigator);
+
+        usleep(1'000'000);
+
+        moveToRoom(3, navigator);
+        rotateToAngle(0.75, navigator);
+
+        navigator.runMotors({ 0, 0 }, 0);
+
+        // std::vector<Point> path = navigator.nodeMap.getPath(current, target);
+        // path.insert(path.begin(), robotPos);
+
+        // for (Point p : path) {
+        //     std::cout << "Point " << p.x << " " << p.y << std::endl;
+        // }
+        
+        // followPath(path, navigator);
+
+
+
+        /*Point target(800, 1200);
         bool reached = runToPoint(target, navigator);
         navigator.runMotors({ 0, 0 }, 0);
 
         if (!reached) {
             std::cout << "Fire found" << std::endl;
             cannon.aimAndShoot();
-        }
+        }*/
     }
 
     // while (!navigator.window.has_value() || !navigator.window.value().shouldClose()) {

@@ -10,7 +10,7 @@ void pinMode(int pin, const char *mode) {
         fclose(file);
     }
 
-    char name[128] = {};
+    /*char name[128] = {};
     snprintf(name, sizeof(name), "/sys/class/gpio/gpio%d/direction", pin);
 
     file = fopen(name, "w");
@@ -19,7 +19,7 @@ void pinMode(int pin, const char *mode) {
         std::exit(1);
     }
     fprintf(file, "%s", mode);
-    fclose(file);
+    fclose(file);*/
 }
 
 int pinRead(int pin) {

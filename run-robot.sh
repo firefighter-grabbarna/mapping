@@ -12,4 +12,4 @@ make build/bin/robot build/bin/stop
 trap "echo; echo Stopping; build/bin/stop /dev/ttyACM*" EXIT
 
 echo "Running"
-build/bin/robot /dev/tty{AMA,ACM}*
+build/bin/robot /dev/tty{USB,ACM}*
