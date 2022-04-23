@@ -18,7 +18,7 @@
 #include "../common/nodemap.hpp"
 
 const int DISTANCE_PIN = 23;
-const int ALARM_PIN = 24;
+//const int ALARM_PIN = 24;
 
 // const Map map({
 //     {{0, 980}, {975, 980}},
@@ -98,7 +98,8 @@ public:
                         std::cout << "Bad data (" << cost << ")" << std::endl;
 
                         this->motors.setSpeed({0, 0}, 1);
-                        usleep(1'000'000);
+                        int delay = (int) ((long long) rand() * 500000 / RAND_MAX + 500000);
+                        usleep(delay);
                         this->motors.setSpeed({0, 0}, 0);
                         // Rescan, the last scan could not be found
                         continue;
@@ -166,11 +167,6 @@ public:
     }
 };
 
-bool seesFire() {
-    //return pinRead(ALARM_PIN) == 1;
-    return false;
-}
-
 // Drives to the specified point. Returns true if the point was reached,
 // false if the fire alarm was triggered.
 void runToPoint(Point target, Navigator &navigator) {
@@ -195,6 +191,7 @@ void runToPoint(Point target, Navigator &navigator) {
 }
 
 void rotateToAngle(Rotation angle, Navigator &navigator) {
+    bool didChangeMotors = false;
     while (true) {
         navigator.updatePosition();
 
@@ -208,9 +205,11 @@ void rotateToAngle(Rotation angle, Navigator &navigator) {
         } else if (angleDiff < -0.7) {
             navigator.runMotors({0, 0}, angleDiff);
         } else {
-            navigator.runMotors({ 0, 0 }, 0);
+            if (didChangeMotors)
+                navigator.runMotors({ 0, 0 }, 0);
             break;
         }
+        didChangeMotors = true;
     }
 }
 
@@ -251,6 +250,75 @@ void moveToRoom(int room, Navigator &navigator) {
     navigator.runMotors({ 0, 0 }, 0);
 }
 
+bool moveToCandle(Cannon &cannon, Navigator &navigator) {
+    navigator.updatePosition();
+
+    int angle = cannon.getFireAngle();
+    std::cout << angle << std::endl;
+    if (angle == -1) return false;
+
+    Point robotPos = navigator.position.offset.point()
+        + Vec2(0, 45).rotate(navigator.position.rotation);
+    float robotAngle = navigator.position.rotation.radians;
+    float totalAngle = robotAngle + (angle - 90) * (3.141592 / 180.0);
+
+    std::cout << "A: " << robotAngle << " " << totalAngle << std::endl;
+
+    Line line(robotPos, robotPos + Vec2(0, 10000).rotate(totalAngle));
+
+    bool didSeeFire = false;
+
+    Point lastCheck = robotPos;
+
+    while (true) {
+
+        rotateToAngle(totalAngle, navigator);
+
+        Point robotPos = navigator.position.offset.point()
+            + Vec2(0, 45).rotate(navigator.position.rotation);
+            
+        if ((robotPos - lastCheck).mag() > 50) {
+            lastCheck = robotPos;
+            navigator.runMotors({0, 0}, 0);
+            usleep(1'000'000);
+            navigator.updatePosition();
+        }
+
+        bool seesFireNow = pinRead(DISTANCE_PIN);
+        std::cout << (seesFireNow ? "fire" : "no fire") << std::endl;
+        if (didSeeFire && !seesFireNow) break;
+        didSeeFire = seesFireNow;
+
+        robotPos = navigator.position.offset.point()
+            + Vec2(0, 45).rotate(navigator.position.rotation);
+
+        Vec2 awayFromWall = map.closestPointTo(robotPos) - robotPos;
+
+        Vec2 towardsRay = line.pointClosestTo(robotPos) - robotPos;
+        Vec2 alongRay = line.p2 - line.p1;
+
+        float rayDist = towardsRay.mag();
+        float rayFactor = std::min(rayDist / 200.0, 1.0);
+
+        float wallDist = awayFromWall.mag();
+        float wallFactor = std::max(std::min((200.0 - wallDist) / 50.0, 1.0), 0.0);
+
+        Vec2 direction = alongRay.normalize();
+        direction = direction + (towardsRay.normalize() - direction) * rayFactor;
+        direction = direction + (awayFromWall.normalize() - direction) * wallFactor;
+
+        float angleDiff = totalAngle - navigator.position.rotation.radians;
+
+        if (angleDiff > 3.141592) angleDiff -= 3.141592 * 2;
+        if (angleDiff < -3.141592) angleDiff += 3.141592 * 2;
+
+        direction = direction.normalize() * 0.7;
+        navigator.runMotors(direction, angleDiff);
+    }
+    navigator.runMotors({0, 0}, 0);
+    return true;
+}
+
 /*void followPath(std::vector<Point> path, Navigator &navigator) {
     for (size_t i = 0; i < path.size() - 1; i++) {
         Line line(path[i], path[i + 1]);
@@ -260,14 +328,15 @@ void moveToRoom(int room, Navigator &navigator) {
 }*/
 
 int main(int argc, const char** argv) {
+    std::srand(time(0));
 
-    //pinMode(DISTANCE_PIN, "in"); // avstånd
+    pinMode(DISTANCE_PIN, "in"); // avstånd
     //pinMode(ALARM_PIN, "in"); // brandvarnare
 
-    //std::cout << "distance: " << pinRead(DISTANCE_PIN) << std::endl;
-    //std::cout << "alarm: " << pinRead(ALARM_PIN) << std::endl;
+    // std::cout << "distance: " << pinRead(DISTANCE_PIN) << std::endl;
+    // std::cout << "alarm: " << pinRead(ALARM_PIN) << std::endl;
 
-    //if (true) return 0;
+    // if (true) return 0;
 
     std::optional<Serial> lidarSerial;
     std::optional<Serial> motorsSerial;
@@ -327,25 +396,51 @@ int main(int argc, const char** argv) {
         usleep(1'000'000);
         std::cout << "Following path" << std::endl;
 
-        moveToRoom(2, navigator);
-        rotateToAngle(-0.5, navigator);
+        // moveToCandle(cannon, navigator);
+        // std::cout << "Fire reached" << std::endl;
+        // continue;
 
-        usleep(1'000'000);
+        while (true) {
+            moveToRoom(2, navigator);
+            rotateToAngle(-0.5, navigator);
 
-        moveToRoom(1, navigator);
-        rotateToAngle(-1, navigator);
+            if (moveToCandle(cannon, navigator)) {
+                cannon.aimAndShoot();
+                continue;
+            }
 
-        usleep(1'000'000);
+            usleep(1'000'000);
 
-        moveToRoom(4, navigator);
-        rotateToAngle(-1.75, navigator);
+            moveToRoom(1, navigator);
+            rotateToAngle(-1, navigator);
 
-        usleep(1'000'000);
+            if (moveToCandle(cannon, navigator)) {
+                cannon.aimAndShoot();
+                continue;
+            }
 
-        moveToRoom(3, navigator);
-        rotateToAngle(0.75, navigator);
+            usleep(1'000'000);
 
-        navigator.runMotors({ 0, 0 }, 0);
+            moveToRoom(4, navigator);
+            rotateToAngle(-2, navigator);
+
+            if (moveToCandle(cannon, navigator)) {
+                cannon.aimAndShoot();
+                continue;
+            }
+
+            usleep(1'000'000);
+
+            moveToRoom(3, navigator);
+            rotateToAngle(0.75, navigator);
+
+            if (moveToCandle(cannon, navigator)) {
+                cannon.aimAndShoot();
+                continue;
+            }
+
+            usleep(1'000'000);
+        }
 
         // std::vector<Point> path = navigator.nodeMap.getPath(current, target);
         // path.insert(path.begin(), robotPos);
