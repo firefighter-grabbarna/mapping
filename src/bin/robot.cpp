@@ -60,12 +60,15 @@ public:
     Transform position;
     NodeMap nodeMap;
 
+    time_t lastFailure;
+
     Navigator(std::optional<Window> &&window, Serial &&lidar, Serial &&motors):
         window(std::move(window)),
         lidar(std::move(lidar)),
         motors(std::move(motors)),
         position(),
-        nodeMap() {}
+        nodeMap(),
+        lastFailure(std::time(nullptr)) {}
 
     // Uses the lidar to find the current position. Stops the motors if a full
     // search is needed.
@@ -73,6 +76,7 @@ public:
         std::vector<Point> scanned;
         
         while (true) {
+
             scanned.clear();
 
             std::vector<int> distances = this->lidar.scan();
@@ -84,17 +88,20 @@ public:
             }
 
             if (scanned.size() > 30) {
+                bool shouldFail = std::time(nullptr) > lastFailure + 30;
+
                 this->position = updateTransform(this->position, map, scanned);
 
                 float cost = transformCost(this->position, map, scanned);
                 std::cout << "Cost: " << cost << std::endl;
-                if (cost > 50.0) {
+                if (cost > 50.0 || shouldFail) {
+                    lastFailure = std::time(nullptr);
                     this->motors.setSpeed({0, 0}, 0);
                     std::cout << "Desync detected" << std::endl;
                     this->position = searchTransform(map, scanned);
 
                     cost = transformCost(this->position, map, scanned);
-                    if (cost > 50.0) {
+                    if (cost > 50.0 || shouldFail) {
                         std::cout << "Bad data (" << cost << ")" << std::endl;
 
                         this->motors.setSpeed({0, 0}, 1);
@@ -200,9 +207,9 @@ void rotateToAngle(Rotation angle, Navigator &navigator) {
         if (angleDiff > 3.141592) angleDiff -= 3.141592 * 2;
         if (angleDiff < -3.141592) angleDiff += 3.141592 * 2;
 
-        if (angleDiff > 0.7) {
+        if (angleDiff > 0.5) {
             navigator.runMotors({0, 0}, angleDiff);
-        } else if (angleDiff < -0.7) {
+        } else if (angleDiff < -0.5) {
             navigator.runMotors({0, 0}, angleDiff);
         } else {
             if (didChangeMotors)
@@ -257,6 +264,8 @@ bool moveToCandle(Cannon &cannon, Navigator &navigator) {
     std::cout << angle << std::endl;
     if (angle == -1) return false;
 
+    time_t startTime = std::time(nullptr);
+
     Point robotPos = navigator.position.offset.point()
         + Vec2(0, 45).rotate(navigator.position.rotation);
     float robotAngle = navigator.position.rotation.radians;
@@ -271,6 +280,8 @@ bool moveToCandle(Cannon &cannon, Navigator &navigator) {
     Point lastCheck = robotPos;
 
     while (true) {
+        if (std::time(nullptr) > startTime + 90) return false;
+        navigator.lastFailure = std::time(nullptr);
 
         rotateToAngle(totalAngle, navigator);
 
@@ -386,9 +397,9 @@ int main(int argc, const char** argv) {
 
     Cannon cannon(std::move(cannonSerial.value()));
 
-    std::cout << "Locating" << std::endl;
+    /*std::cout << "Locating" << std::endl;
     navigator.updatePosition();
-    std::cout << "Position found" << std::endl;
+    std::cout << "Position found" << std::endl;*/
 
     while (true) {
         cannon.waitForButton();
@@ -396,8 +407,11 @@ int main(int argc, const char** argv) {
         usleep(1'000'000);
         std::cout << "Following path" << std::endl;
 
-        // moveToCandle(cannon, navigator);
-        // std::cout << "Fire reached" << std::endl;
+        // if (moveToCandle(cannon, navigator)) {
+        //     std::cout << "Fire reached" << std::endl;
+
+        //     cannon.aimAndShoot();
+        // }
         // continue;
 
         while (true) {
@@ -412,7 +426,7 @@ int main(int argc, const char** argv) {
             usleep(1'000'000);
 
             moveToRoom(1, navigator);
-            rotateToAngle(-1, navigator);
+            rotateToAngle(-0.75, navigator);
 
             if (moveToCandle(cannon, navigator)) {
                 cannon.aimAndShoot();
