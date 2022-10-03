@@ -1,4 +1,5 @@
 mod icp;
+mod noop;
 
 use std::future::Future;
 
@@ -8,6 +9,7 @@ use crate::math::{Point, Transform};
 use crate::Map;
 
 pub use self::icp::icp_localizer;
+pub use self::noop::noop_localizer;
 
 /// A localizer.
 pub struct Localizer {

@@ -1,10 +1,8 @@
 mod component;
 mod display;
-mod localizer;
+pub mod localizer;
 mod map;
 pub mod math;
-
-use self::localizer::icp_localizer;
 
 pub use self::component::{simulated_lidar, Lidar};
 pub use self::map::Map;
@@ -18,7 +16,9 @@ pub async fn main(map: Map, lidar: Lidar) {
         state.walls = map.walls.clone();
     });
 
-    let mut localizer = icp_localizer(map, lidar, Some(display.clone()));
+    let mut localizer = localizer::icp_localizer(map, lidar, Some(display.clone()));
+
+    // let mut localizer = localizer::noop_localizer(lidar, Some(display.clone()));
 
     loop {
         if let Some(_position) = localizer.next_position().await {
