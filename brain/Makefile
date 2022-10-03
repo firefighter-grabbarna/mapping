@@ -1,5 +1,5 @@
-HPP_FILES=$(wildcard src/common/*.hpp)
-OBJ_FILES=$(patsubst src/common/%.cpp,build/obj/%.o,$(wildcard src/common/*.cpp))
+HPP_FILES=$(wildcard common/*.hpp)
+OBJ_FILES=$(patsubst %.cpp,build/%.o,$(wildcard common/*.cpp))
 
 CC=g++ -flto -O3 -std=c++17 -Wall -Wextra
 
