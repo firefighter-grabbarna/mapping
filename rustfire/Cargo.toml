@@ -1,0 +1,23 @@
+[package]
+name = "firefighter"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "simulation"
+path = "bin/simulation.rs"
+
+[dependencies]
+futures-util = "0.3.21"
+hyper = { version = "0.14.20", features = ["tcp", "http1", "server"] }
+hyper-tungstenite = "0.8.1"
+ordered-float = "3.0.0"
+rand = "0.8.5"
+rand_distr = "0.4.3"
+rmp-serde = "1.1.0"
+serde = { version = "1.0.142", features = ["derive"] }
+tokio = { version = "1.18.0", features = ["macros", "rt-multi-thread", "sync", "time"] }
+tungstenite = "0.17.3"
+
+[profile.dev]
+opt-level = 1
