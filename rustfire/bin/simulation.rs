@@ -2,10 +2,38 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use firefighter::math::{Line, Point, Radians, Transform, Vec2};
-use firefighter::{simulated_lidar, Map};
+use firefighter::{simulated_lidar, Map, Lidar, display, localizer};
+
+/// Simulate a robot inside the map.
+fn simulate_robot(mut map: Map) -> Lidar {
+    let start_pos = Transform::new(Radians(1.0), Vec2::new(1200.0, 1200.0));
+    let position = Arc::new(Mutex::new(start_pos));
+
+    tokio::spawn({
+        let position = Arc::clone(&position);
+        let start = Instant::now();
+        async move {
+            loop {
+                let time = start.elapsed().as_secs_f32();
+                let a1 = Radians(time * 0.1);
+                let a2 = Radians(time * 1.0);
+
+                let pos = Point::new(1200.0, 1200.0) + Vec2::new(800.0, 0.0).rotate(a1);
+
+                *position.lock().unwrap() = Transform::new(a2, pos.vec2());
+
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        }
+    });
+
+    map.randomize(50.0);
+    simulated_lidar(map, position)
+}
 
 #[tokio::main]
 async fn main() {
+    // Define the map
     let map = Map {
         walls: vec![
             Line::new(Point::new(0.0, 2400.0), Point::new(700.0, 2400.0)),
@@ -29,30 +57,19 @@ async fn main() {
         ],
     };
 
-    let start_pos = Transform::new(Radians(1.0), Vec2::new(1200.0, 1200.0));
-    let position = Arc::new(Mutex::new(start_pos));
-
-    tokio::spawn({
-        let position = Arc::clone(&position);
-        let start = Instant::now();
-        async move {
-            loop {
-                let time = start.elapsed().as_secs_f32();
-                let a1 = Radians(time * 0.1);
-                let a2 = Radians(time * 1.0);
-
-                let pos = Point::new(1200.0, 1200.0) + Vec2::new(800.0, 0.0).rotate(a1);
-
-                *position.lock().unwrap() = Transform::new(a2, pos.vec2());
-
-                tokio::time::sleep(Duration::from_millis(10)).await;
-            }
-        }
+    // Start the display server.
+    let addr = "0.0.0.0:8000".parse().unwrap();
+    let display = display::listen(&addr);
+    display.update_state(|state| {
+        state.view_box = [-200.0, -200.0, 2800.0, 2800.0];
+        state.walls = map.walls.clone();
     });
 
-    let mut distorted = map.clone();
-    distorted.randomize(50.0);
-    let lidar = simulated_lidar(distorted, position);
+    // Simulate the lidar in a distorted version of the map.
+    let lidar = simulate_robot(map.clone());
 
-    firefighter::main(map, lidar).await;
+    // Run the localizer with the simulated lidar data.
+    let localizer = localizer::icp_localizer(map, lidar, Some(display.clone()));
+
+    firefighter::main(localizer).await;
 }
