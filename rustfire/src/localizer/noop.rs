@@ -7,9 +7,9 @@ use super::Localizer;
 /// Creates a `Localizer` which assumes the robot is stationary.
 pub fn noop_localizer(mut lidar: Lidar, display: Option<Display>) -> Localizer {
     let position = Transform::new(Radians::from_degrees(0.0), Vec2::new(1300.0, 1300.0));
-    Localizer::from_handler(|channel| async move {
+    Localizer::from_handler(move |channel| {
         loop {
-            let mut points = lidar.next_scan().await;
+            let mut points = lidar.next_scan();
 
             // Update the display.
             if let Some(ref display) = display {

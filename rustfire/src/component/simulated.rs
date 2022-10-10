@@ -13,11 +13,9 @@ pub fn simulated_lidar(map: Map, position: Arc<Mutex<Transform>>) -> Lidar {
     let max_angle = Radians::from_degrees(120.0);
     let angular_resolution = 680;
 
-    let mut interval = tokio::time::interval(scan_duration);
-
-    Lidar::from_handler(|channel| async move {
+    Lidar::from_handler(move |channel| {
         loop {
-            interval.tick().await;
+            std::thread::sleep(scan_duration);
 
             let position = *position.lock().unwrap();
 

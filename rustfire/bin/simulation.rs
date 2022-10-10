@@ -1,18 +1,19 @@
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use firefighter::display::Display;
 use firefighter::math::{Line, Point, Radians, Transform, Vec2};
-use firefighter::{simulated_lidar, Map, Lidar, display, localizer};
+use firefighter::{localizer, simulated_lidar, Lidar, Map};
 
 /// Simulate a robot inside the map.
 fn simulate_robot(mut map: Map) -> Lidar {
     let start_pos = Transform::new(Radians(1.0), Vec2::new(1200.0, 1200.0));
     let position = Arc::new(Mutex::new(start_pos));
 
-    tokio::spawn({
+    std::thread::spawn({
         let position = Arc::clone(&position);
         let start = Instant::now();
-        async move {
+        move || {
             loop {
                 let time = start.elapsed().as_secs_f32();
                 let a1 = Radians(time * 0.1);
@@ -22,7 +23,7 @@ fn simulate_robot(mut map: Map) -> Lidar {
 
                 *position.lock().unwrap() = Transform::new(a2, pos.vec2());
 
-                tokio::time::sleep(Duration::from_millis(10)).await;
+                std::thread::sleep(Duration::from_millis(10));
             }
         }
     });
@@ -31,8 +32,7 @@ fn simulate_robot(mut map: Map) -> Lidar {
     simulated_lidar(map, position)
 }
 
-#[tokio::main]
-async fn main() {
+fn actual_main(display: Display) {
     // Define the map
     let map = Map {
         walls: vec![
@@ -57,9 +57,6 @@ async fn main() {
         ],
     };
 
-    // Start the display server.
-    let addr = "0.0.0.0:8000".parse().unwrap();
-    let display = display::listen(&addr);
     display.update_state(|state| {
         state.view_box = [-200.0, -200.0, 2800.0, 2800.0];
         state.walls = map.walls.clone();
@@ -71,5 +68,17 @@ async fn main() {
     // Run the localizer with the simulated lidar data.
     let localizer = localizer::icp_localizer(map, lidar, Some(display.clone()));
 
-    firefighter::main(localizer).await;
+    firefighter::main(localizer);
+}
+
+#[tokio::main]
+async fn main() {
+    let addr = "0.0.0.0:8000".parse().unwrap();
+    let display = firefighter::display::listen(&addr);
+
+    tokio::task::spawn_blocking(|| {
+        actual_main(display);
+    })
+    .await
+    .unwrap();
 }

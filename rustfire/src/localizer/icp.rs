@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use ordered_float::OrderedFloat;
 use rand::Rng;
 
@@ -12,43 +10,12 @@ use super::{cost, Localizer};
 /// Creates a `Localizer` using iterative closest point with the reference map
 /// and lidar data.
 pub fn icp_localizer(map: Map, mut lidar: Lidar, display: Option<Display>) -> Localizer {
-    Localizer::from_handler(|channel| async move {
-        let map = Arc::new(map);
-
+    Localizer::from_handler(move |channel| {
         let mut last_pos = None;
         loop {
-            let points = lidar.next_scan().await;
+            let mut points = lidar.next_scan();
 
-            let map = Arc::clone(&map);
-            let (new_pos, mut points, cost) = tokio::task::spawn_blocking(move || {
-                // Normal case, update the last position.
-                if let Some(pos) = last_pos {
-                    let before = std::time::Instant::now();
-
-                    let pos = converge(pos, &points, &map);
-
-                    dbg!(before.elapsed());
-
-                    // Keep the result if it is good enough.
-                    let cost = cost(pos, &points, &map);
-                    if cost < 30.0 {
-                        return (Some(pos), points, cost);
-                    }
-                }
-
-                // Desync case, perform a full search.
-                let pos = full_search(&points, &map);
-
-                // Keep the result if it is good enough.
-                let cost = cost(pos, &points, &map);
-                if cost < 30.0 {
-                    return (Some(pos), points, cost);
-                }
-
-                (None, points, cost)
-            })
-            .await
-            .unwrap();
+            let (new_pos, cost) = update_position(last_pos, &points, &map);
 
             // Update the display.
             if let Some(ref display) = display {
@@ -72,6 +39,38 @@ pub fn icp_localizer(map: Map, mut lidar: Lidar, display: Option<Display>) -> Lo
             }
         }
     })
+}
+
+fn update_position(
+    last_pos: Option<Transform>,
+    points: &[Point],
+    map: &Map,
+) -> (Option<Transform>, f32) {
+    // Normal case, update the last position.
+    if let Some(pos) = last_pos {
+        let before = std::time::Instant::now();
+
+        let pos = converge(pos, &points, &map);
+
+        dbg!(before.elapsed());
+
+        // Keep the result if it is good enough.
+        let cost = cost(pos, &points, &map);
+        if cost < 30.0 {
+            return (Some(pos), cost);
+        }
+    }
+
+    // Desync case, perform a full search.
+    let pos = full_search(&points, &map);
+
+    // Keep the result if it is good enough.
+    let cost = cost(pos, &points, &map);
+    if cost < 30.0 {
+        return (Some(pos), cost);
+    }
+
+    (None, cost)
 }
 
 // Performs a single ICP step.

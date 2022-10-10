@@ -28,7 +28,7 @@ impl Display {
 }
 
 /// The state to send to the client.
-#[derive(Serialize, Default)]
+#[derive(Serialize, Default, Debug)]
 pub struct State {
     pub view_box: [f32; 4],
     pub points: Vec<Point>,
@@ -58,12 +58,8 @@ pub fn listen(addr: &SocketAddr) -> Display {
 
     // Spawn a task which sends the state every 100ms (if changed).
     let inner2 = Arc::downgrade(&inner);
-    tokio::spawn(async move {
-        use tokio::time::{interval, MissedTickBehavior};
-        let mut interval = interval(Duration::from_millis(100));
-        interval.set_missed_tick_behavior(MissedTickBehavior::Delay);
+    std::thread::spawn(move || {
         loop {
-            interval.tick().await;
             if let Some(inner) = inner2.upgrade() {
                 let mut inner = inner.lock().unwrap();
                 let Inner { server, state } = &mut *inner;
@@ -71,6 +67,7 @@ pub fn listen(addr: &SocketAddr) -> Display {
             } else {
                 break;
             }
+            std::thread::sleep(Duration::from_millis(100));
         }
     });
 

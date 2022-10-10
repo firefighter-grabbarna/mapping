@@ -1,9 +1,7 @@
 mod icp;
 mod noop;
 
-use std::future::Future;
-
-use tokio::sync::watch;
+use std::sync::mpsc;
 
 use crate::math::{Point, Transform};
 use crate::Map;
@@ -13,28 +11,26 @@ pub use self::noop::noop_localizer;
 
 /// A localizer.
 pub struct Localizer {
-    channel: watch::Receiver<Option<Transform>>,
+    channel: mpsc::Receiver<Option<Transform>>,
 }
 
 impl Localizer {
     /// Creates a localizer with the specified handler, which should update the
     /// value in the channel when the guess changes
-    fn from_handler<H, F>(handler: H) -> Self
+    fn from_handler<H>(handler: H) -> Self
     where
-        H: FnOnce(watch::Sender<Option<Transform>>) -> F,
-        F: Future<Output = ()> + Send + 'static,
+        H: FnOnce(mpsc::SyncSender<Option<Transform>>) + Send + 'static,
     {
-        let (send, recv) = watch::channel(None);
+        let (send, recv) = mpsc::sync_channel(1);
 
-        tokio::spawn(handler(send));
+        std::thread::spawn(|| handler(send));
 
         Localizer { channel: recv }
     }
 
     /// Waits for the next position to be available, and returns it.
-    pub async fn next_position(&mut self) -> Option<Transform> {
-        let _ = self.channel.changed().await;
-        *self.channel.borrow()
+    pub fn next_position(&mut self) -> Option<Transform> {
+        self.channel.recv().unwrap()
     }
 }
 
