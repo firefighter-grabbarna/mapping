@@ -1,4 +1,4 @@
-mod component;
+pub mod component;
 pub mod display;
 pub mod localizer;
 mod map;

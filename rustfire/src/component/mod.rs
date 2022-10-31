@@ -1,10 +1,13 @@
 mod simulated;
+mod real_lidar;
+pub mod serial;
 
 use std::sync::mpsc;
 
 use crate::math::Point;
 
 pub use self::simulated::simulated_lidar;
+pub use self::real_lidar::real_lidar;
 
 /// A lidar.
 pub struct Lidar {

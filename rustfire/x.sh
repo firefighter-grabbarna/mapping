@@ -12,7 +12,7 @@ case $1 in
         ;;
     run)
         $script build-js
-        cargo run
+        cargo run --bin simulation
         ;;
     watch)
         cargo watch -s "$script run"

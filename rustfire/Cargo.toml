@@ -7,6 +7,10 @@ edition = "2021"
 name = "simulation"
 path = "bin/simulation.rs"
 
+[[bin]]
+name = "lidar"
+path = "bin/lidar.rs"
+
 [dependencies]
 futures-util = "0.3.21"
 hyper = { version = "0.14.20", features = ["tcp", "http1", "server"] }
@@ -16,6 +20,7 @@ rand = "0.8.5"
 rand_distr = "0.4.3"
 rmp-serde = "1.1.0"
 serde = { version = "1.0.142", features = ["derive"] }
+serial2 = "0.1.6"
 tokio = { version = "1.18.0", features = ["macros", "rt-multi-thread", "sync", "time"] }
 tungstenite = "0.17.3"
 

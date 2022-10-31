@@ -82,6 +82,7 @@ dependencies = [
  "rand_distr",
  "rmp-serde",
  "serde",
+ "serial2",
  "tokio",
  "tungstenite",
 ]
@@ -500,6 +501,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "serial2"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc6d6075c0fd3e12d5882e385cf08033d30525b57d0a47c9bb8c645942bde3ff"
+dependencies = [
+ "cfg-if",
+ "libc",
+ "winapi",
 ]
 
 [[package]]
