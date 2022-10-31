@@ -72,8 +72,6 @@ pub fn real_lidar(serial: Serial) -> Lidar {
         let mut lidar = Urg::new(serial);
 
         loop {
-            std::thread::sleep(std::time::Duration::from_millis(100));
-
             let distances = lidar.scan();
             let mut points = Vec::new();
 
