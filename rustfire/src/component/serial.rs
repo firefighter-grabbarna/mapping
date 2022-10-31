@@ -1,5 +1,5 @@
+use std::io::{BufRead, BufReader, Write};
 use std::time::Duration;
-use std::io::{Write, BufReader, BufRead};
 
 use serial2::SerialPort;
 

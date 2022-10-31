@@ -1,5 +1,5 @@
-use firefighter::component::serial::Serial;
 use firefighter::component::real_lidar;
+use firefighter::component::serial::Serial;
 use firefighter::display::Display;
 use firefighter::math::Transform;
 
@@ -19,7 +19,6 @@ fn actual_main(display: Display) {
         });
     }
 }
-
 
 #[tokio::main]
 async fn main() {

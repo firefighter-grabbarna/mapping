@@ -13,18 +13,16 @@ fn simulate_robot(mut map: Map) -> Lidar {
     std::thread::spawn({
         let position = Arc::clone(&position);
         let start = Instant::now();
-        move || {
-            loop {
-                let time = start.elapsed().as_secs_f32();
-                let a1 = Radians(time * 0.1);
-                let a2 = Radians(time * 1.0);
+        move || loop {
+            let time = start.elapsed().as_secs_f32();
+            let a1 = Radians(time * 0.1);
+            let a2 = Radians(time * 1.0);
 
-                let pos = Point::new(1200.0, 1200.0) + Vec2::new(800.0, 0.0).rotate(a1);
+            let pos = Point::new(1200.0, 1200.0) + Vec2::new(800.0, 0.0).rotate(a1);
 
-                *position.lock().unwrap() = Transform::new(a2, pos.vec2());
+            *position.lock().unwrap() = Transform::new(a2, pos.vec2());
 
-                std::thread::sleep(Duration::from_millis(10));
-            }
+            std::thread::sleep(Duration::from_millis(10));
         }
     });
 

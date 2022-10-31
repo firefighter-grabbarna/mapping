@@ -58,17 +58,15 @@ pub fn listen(addr: &SocketAddr) -> Display {
 
     // Spawn a task which sends the state every 100ms (if changed).
     let inner2 = Arc::downgrade(&inner);
-    std::thread::spawn(move || {
-        loop {
-            if let Some(inner) = inner2.upgrade() {
-                let mut inner = inner.lock().unwrap();
-                let Inner { server, state } = &mut *inner;
-                server.set_state(state);
-            } else {
-                break;
-            }
-            std::thread::sleep(Duration::from_millis(100));
+    std::thread::spawn(move || loop {
+        if let Some(inner) = inner2.upgrade() {
+            let mut inner = inner.lock().unwrap();
+            let Inner { server, state } = &mut *inner;
+            server.set_state(state);
+        } else {
+            break;
         }
+        std::thread::sleep(Duration::from_millis(100));
     });
 
     Display { inner }

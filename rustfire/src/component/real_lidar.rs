@@ -1,5 +1,5 @@
-use super::Lidar;
 use super::serial::Serial;
+use super::Lidar;
 use crate::math::{Radians, Vec2};
 
 struct Urg {
@@ -42,7 +42,11 @@ impl Urg {
         let query = format!("GD{:04}{:04}01", self.amin, self.amax);
         let res = self.serial.query(&query);
 
-        let data = res.iter().skip(3).flat_map(|s| &s.as_bytes()[..s.len() - 1]).collect::<Vec<_>>();
+        let data = res
+            .iter()
+            .skip(3)
+            .flat_map(|s| &s.as_bytes()[..s.len() - 1])
+            .collect::<Vec<_>>();
 
         let mut values = Vec::new();
         for bytes in data.chunks(3) {
@@ -66,7 +70,7 @@ impl Urg {
     }
 }
 
-/// 
+///
 pub fn real_lidar(serial: Serial) -> Lidar {
     Lidar::from_handler(move |channel| {
         let mut lidar = Urg::new(serial);
