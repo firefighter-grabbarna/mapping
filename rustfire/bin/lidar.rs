@@ -1,9 +1,11 @@
-use firefighter::component::real_lidar;
-use firefighter::component::serial::Serial;
-use firefighter::display::Display;
+use firefighter::component::{real_lidar, Serial};
 use firefighter::math::Transform;
+use firefighter::Display;
 
-fn actual_main(display: Display) {
+fn main() {
+    let addr = "0.0.0.0:8000".parse().unwrap();
+    let display = Display::listen(&addr);
+
     let serial = Serial::open("/dev/ttyACM0");
     let mut lidar = real_lidar(serial);
 
@@ -18,16 +20,4 @@ fn actual_main(display: Display) {
             state.points = points;
         });
     }
-}
-
-#[tokio::main]
-async fn main() {
-    let addr = "0.0.0.0:8000".parse().unwrap();
-    let display = firefighter::display::listen(&addr);
-
-    tokio::task::spawn_blocking(|| {
-        actual_main(display);
-    })
-    .await
-    .unwrap();
 }

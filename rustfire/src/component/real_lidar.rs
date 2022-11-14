@@ -1,5 +1,4 @@
-use super::serial::Serial;
-use super::Lidar;
+use super::{Lidar, Serial};
 use crate::math::{Radians, Vec2};
 
 struct Urg {
@@ -12,6 +11,7 @@ struct Urg {
     afrt: u32,
     _rpm: u32,
 }
+
 impl Urg {
     fn new(serial: Serial) -> Self {
         let mut lidar = Urg {
@@ -70,7 +70,7 @@ impl Urg {
     }
 }
 
-///
+/// Connects to a real lidar at the specified serial port.
 pub fn real_lidar(serial: Serial) -> Lidar {
     Lidar::from_handler(move |channel| {
         let mut lidar = Urg::new(serial);

@@ -1,9 +1,10 @@
 use ordered_float::OrderedFloat;
 use rand::Rng;
 
-use crate::display::Display;
+use crate::component::Lidar;
 use crate::math::{Point, Radians, Transform, Vec2};
-use crate::{Lidar, Map};
+use crate::Display;
+use crate::Map;
 
 use super::{cost, Localizer};
 

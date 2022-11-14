@@ -1,9 +1,10 @@
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use firefighter::display::Display;
+use firefighter::component::{simulated_lidar, Lidar};
+use firefighter::localizer::icp_localizer;
 use firefighter::math::{Line, Point, Radians, Transform, Vec2};
-use firefighter::{localizer, simulated_lidar, Lidar, Map};
+use firefighter::{Display, Map};
 
 /// Simulate a robot inside the map.
 fn simulate_robot(mut map: Map) -> Lidar {
@@ -30,7 +31,10 @@ fn simulate_robot(mut map: Map) -> Lidar {
     simulated_lidar(map, position)
 }
 
-fn actual_main(display: Display) {
+fn main() {
+    let addr = "0.0.0.0:8000".parse().unwrap();
+    let display = Display::listen(&addr);
+
     // Define the map
     let map = Map {
         walls: vec![
@@ -64,19 +68,7 @@ fn actual_main(display: Display) {
     let lidar = simulate_robot(map.clone());
 
     // Run the localizer with the simulated lidar data.
-    let localizer = localizer::icp_localizer(map, lidar, Some(display.clone()));
+    let localizer = icp_localizer(map, lidar, Some(display.clone()));
 
     firefighter::main(localizer);
-}
-
-#[tokio::main]
-async fn main() {
-    let addr = "0.0.0.0:8000".parse().unwrap();
-    let display = firefighter::display::listen(&addr);
-
-    tokio::task::spawn_blocking(|| {
-        actual_main(display);
-    })
-    .await
-    .unwrap();
 }

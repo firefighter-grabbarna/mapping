@@ -1,6 +1,6 @@
+use crate::component::Lidar;
 use crate::display::Display;
 use crate::math::{Radians, Transform, Vec2};
-use crate::Lidar;
 
 use super::Localizer;
 

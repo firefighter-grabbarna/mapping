@@ -11,8 +11,8 @@ use hyper::{Body, Request, Response};
 use hyper_tungstenite::HyperWebsocket;
 use serde::Serialize;
 use tokio::sync::watch::{channel, Receiver, Sender};
-use tungstenite::Message;
-use tungstenite::{error::ProtocolError, Result as WsResult};
+use tungstenite::error::ProtocolError;
+use tungstenite::{Message, Result as WsResult};
 
 /// A handle to the server, which allows changing the state.
 /// The server is closed when this is dropped.

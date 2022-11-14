@@ -1,5 +1,5 @@
 mod real_lidar;
-pub mod serial;
+mod serial;
 mod simulated;
 
 use std::sync::mpsc;
@@ -7,6 +7,7 @@ use std::sync::mpsc;
 use crate::math::Point;
 
 pub use self::real_lidar::real_lidar;
+pub use self::serial::Serial;
 pub use self::simulated::simulated_lidar;
 
 /// A lidar.
