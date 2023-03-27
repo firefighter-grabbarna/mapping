@@ -3,18 +3,6 @@ name = "firefighter"
 version = "0.1.0"
 edition = "2021"
 
-[[bin]]
-name = "simulation"
-path = "bin/simulation.rs"
-
-[[bin]]
-name = "lidar"
-path = "bin/lidar.rs"
-
-[[bin]]
-name = "cameras"
-path = "bin/cameras.rs"
-
 [dependencies]
 futures-util = "0.3.21"
 hyper = { version = "0.14.20", features = ["tcp", "http1", "server"] }
