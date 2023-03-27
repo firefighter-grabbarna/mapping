@@ -51,22 +51,22 @@ fn update_position(
     if let Some(pos) = last_pos {
         let before = std::time::Instant::now();
 
-        let pos = converge(pos, &points, &map);
+        let pos = converge(pos, points, map);
 
         dbg!(before.elapsed());
 
         // Keep the result if it is good enough.
-        let cost = cost(pos, &points, &map);
+        let cost = cost(pos, points, map);
         if cost < 30.0 {
             return (Some(pos), cost);
         }
     }
 
     // Desync case, perform a full search.
-    let pos = full_search(&points, &map);
+    let pos = full_search(points, map);
 
     // Keep the result if it is good enough.
-    let cost = cost(pos, &points, &map);
+    let cost = cost(pos, points, map);
     if cost < 30.0 {
         return (Some(pos), cost);
     }

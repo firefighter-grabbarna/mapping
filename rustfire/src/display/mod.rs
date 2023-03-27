@@ -32,7 +32,7 @@ impl Display {
     pub fn listen(addr: &SocketAddr) -> Display {
         let (inner_send, inner_recv) = channel();
 
-        let addr = addr.clone();
+        let addr = *addr;
         std::thread::spawn(move || {
             use tokio::runtime::Builder;
 

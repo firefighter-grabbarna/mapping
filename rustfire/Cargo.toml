@@ -11,6 +11,10 @@ path = "bin/simulation.rs"
 name = "lidar"
 path = "bin/lidar.rs"
 
+[[bin]]
+name = "cameras"
+path = "bin/cameras.rs"
+
 [dependencies]
 futures-util = "0.3.21"
 hyper = { version = "0.14.20", features = ["tcp", "http1", "server"] }

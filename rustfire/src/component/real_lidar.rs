@@ -55,7 +55,7 @@ impl Urg {
                 v = v * 64 + (b - b'0') as i32;
             }
 
-            if v < self.dmin as i32 + 20 || v > self.dmax as i32 {
+            if v < self.dmin as i32 || v > self.dmax as i32 {
                 v = -1;
             }
             values.push(v);
@@ -82,7 +82,7 @@ pub fn real_lidar(serial: Serial) -> Lidar {
             for (i, &d) in distances.iter().enumerate() {
                 if d > -1 {
                     let fraction = i as f32 / distances.len() as f32;
-                    let angle = Radians(fraction * 3.141592645 * 2.0);
+                    let angle = Radians(fraction * std::f32::consts::PI * 2.0);
 
                     let direction = Vec2::new(0.0, -1.0).rotate(angle);
                     points.push((direction * d as f32).point());

@@ -68,7 +68,7 @@ fn main() {
     let lidar = simulate_robot(map.clone());
 
     // Run the localizer with the simulated lidar data.
-    let localizer = icp_localizer(map, lidar, Some(display.clone()));
+    let localizer = icp_localizer(map, lidar, Some(display));
 
     firefighter::main(localizer);
 }
