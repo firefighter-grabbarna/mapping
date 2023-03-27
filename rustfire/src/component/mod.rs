@@ -1,16 +1,18 @@
+mod real_cameras;
 mod real_lidar;
 mod serial;
 mod simulated;
-mod real_cameras;
+mod wheels;
 
-use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
+use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 
 use crate::math::Point;
 
-pub use self::real_lidar::real_lidar;
 pub use self::real_cameras::real_cameras;
+pub use self::real_lidar::real_lidar;
 pub use self::serial::Serial;
 pub use self::simulated::simulated_lidar;
+pub use self::wheels::Wheels;
 
 /// A lidar.
 pub struct Lidar {
@@ -43,9 +45,9 @@ pub struct Cameras {
 }
 
 impl Cameras {
-    fn from_handler<H>(handler: H) -> Self 
-    where H:
-    FnOnce(SyncSender<Option<Point>>) + Send + 'static,
+    fn from_handler<H>(handler: H) -> Self
+    where
+        H: FnOnce(SyncSender<Option<Point>>) + Send + 'static,
     {
         let (send, recv) = sync_channel(1);
 

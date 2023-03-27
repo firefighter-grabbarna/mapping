@@ -1,4 +1,4 @@
-use std::io::{BufRead, BufReader, Write, ErrorKind};
+use std::io::{BufRead, BufReader, ErrorKind, Write};
 use std::time::Duration;
 
 use serial2::SerialPort;
@@ -53,9 +53,7 @@ impl Serial {
                 buf.pop();
                 Some(buf)
             }
-            Err(err) if err.kind() == ErrorKind::TimedOut => {
-                None
-            }
+            Err(err) if err.kind() == ErrorKind::TimedOut => None,
             Err(err) => panic!("{err}"),
         }
     }
