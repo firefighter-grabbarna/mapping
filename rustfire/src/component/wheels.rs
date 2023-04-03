@@ -12,16 +12,17 @@ impl Wheels {
     }
 
     /// Sets the speed in the directions. `1.0` is max speed.
-    pub fn set_speed(&mut self, forward: f32, right: f32, clockwise: f32) {
+    pub fn set_speed(&mut self, forward: f32, right: f32, rotate: f32) {
         let max_speed = 35.0;
 
-        let scale = max_speed * 1.0_f32.max(forward.abs() + right.abs() + clockwise.abs());
+        let scale = max_speed * 1.0_f32.max(forward.abs() + right.abs() + rotate.abs());
 
         let forward = (forward * scale) as i32;
         let right = (right * scale) as i32;
-        let clockwise = (clockwise * scale) as i32;
+        let rotate = (rotate * scale) as i32;
 
-        self.serial
-            .output(&format!("{forward} {right} {clockwise}"));
+        //println!("{forward} {right} {rotate}");
+
+        self.serial.output(&format!("{forward} {right} {rotate}"));
     }
 }
