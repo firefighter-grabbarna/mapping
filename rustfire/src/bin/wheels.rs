@@ -14,8 +14,8 @@ fn main() {
             .collect();
         let forward = parts[0];
         let right = parts[1];
-        let clockwise = parts[2];
+        let rotate = parts[2];
 
-        wheels.set_speed(forward, right, clockwise);
+        wheels.set_speed(forward, right, rotate);
     }
 }
