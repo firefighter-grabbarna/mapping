@@ -21,6 +21,8 @@ impl Wheels {
         let right = (right * scale) as i32;
         let clockwise = (clockwise * scale) as i32;
 
+        //println!("{forward} {right} {clockwise}");
+
         self.serial
             .output(&format!("{forward} {right} {clockwise}"));
     }

@@ -12,10 +12,10 @@ fn main() {
             .split_whitespace()
             .map(|n| n.parse().unwrap())
             .collect();
-        let fw = parts[0];
-        let left = parts[1];
-        let ccw = parts[2];
+        let forward = parts[0];
+        let right = parts[1];
+        let clockwise = parts[2];
 
-        wheels.set_speed(fw, left, ccw);
+        wheels.set_speed(forward, right, clockwise);
     }
 }
