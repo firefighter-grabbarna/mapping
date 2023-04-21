@@ -3,6 +3,8 @@ mod noop;
 
 use std::sync::mpsc;
 
+use ordered_float::OrderedFloat;
+
 use crate::math::{Point, Transform};
 use crate::Map;
 
@@ -37,12 +39,16 @@ impl Localizer {
 /// The cost of the guess. Equal to the square root of the average squared
 /// distance to the walls.
 pub fn cost(position: Transform, points: &[Point], map: &Map) -> f32 {
-    let mut sum = 0.0;
+    let mut distances: Vec<_> = points
+        .iter()
+        .map(|&point| {
+            let point = position * point;
+            (map.point_closest_to(point) - point).length_sq()
+        })
+        .collect();
+    distances.sort_by_key(|&v| OrderedFloat(v));
 
-    for &point in points {
-        let point = position * point;
-        sum += (map.point_closest_to(point) - point).length_sq();
-    }
-
-    (sum / points.len() as f32).sqrt()
+    let to_consider = &distances[..distances.len() * 19 / 20];
+    let sum: f32 = to_consider.iter().sum();
+    (sum / to_consider.len() as f32).sqrt()
 }

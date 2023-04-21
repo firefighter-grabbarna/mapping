@@ -10,10 +10,10 @@ pub struct Serial {
 impl Serial {
     pub fn open(path: &str) -> Self {
         let mut port = SerialPort::open(path, 115200).unwrap();
-        port.set_read_timeout(Duration::from_millis(100)).unwrap();
-        //port.set_write_timeout(Duration::from_millis(10)).unwrap();
+        port.set_read_timeout(Duration::from_millis(1000)).unwrap();
+        port.set_write_timeout(Duration::from_millis(1000)).unwrap();
 
-        std::thread::sleep(Duration::from_millis(500));
+        std::thread::sleep(Duration::from_millis(3000));
         port.discard_input_buffer().unwrap();
 
         Serial {

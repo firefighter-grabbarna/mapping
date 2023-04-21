@@ -80,7 +80,7 @@ pub fn real_lidar(serial: Serial) -> Lidar {
             let mut points = Vec::new();
 
             for (i, &d) in distances.iter().enumerate() {
-                if d > -1 {
+                if d > 150 {
                     let fraction = i as f32 / distances.len() as f32;
                     let angle = Radians(fraction * std::f32::consts::PI * 2.0);
 

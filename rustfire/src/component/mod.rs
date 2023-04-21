@@ -1,4 +1,5 @@
-mod real_cameras;
+mod cameras;
+mod find;
 mod real_lidar;
 mod serial;
 mod simulated;
@@ -8,7 +9,8 @@ use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 
 use crate::math::Point;
 
-pub use self::real_cameras::real_cameras;
+pub use self::cameras::Cameras;
+pub use self::find::find_components;
 pub use self::real_lidar::real_lidar;
 pub use self::serial::Serial;
 pub use self::simulated::simulated_lidar;
@@ -35,29 +37,6 @@ impl Lidar {
 
     /// Waits for the next scan to be available, and then returns the scanned points.
     pub fn next_scan(&mut self) -> Vec<Point> {
-        self.channel.recv().unwrap()
-    }
-}
-
-/// A set of infrared cameras.
-pub struct Cameras {
-    channel: Receiver<Option<Point>>,
-}
-
-impl Cameras {
-    fn from_handler<H>(handler: H) -> Self
-    where
-        H: FnOnce(SyncSender<Option<Point>>) + Send + 'static,
-    {
-        let (send, recv) = sync_channel(1);
-
-        std::thread::spawn(|| handler(send));
-
-        Cameras { channel: recv }
-    }
-
-    /// Waits for the next scan to be available, and then returns the found point.
-    pub fn next_scan(&mut self) -> Option<Point> {
         self.channel.recv().unwrap()
     }
 }
