@@ -19,7 +19,7 @@ pub fn find_components() -> ComponentList {
         let entry = entry.unwrap();
         let name = entry.file_name().to_string_lossy().into_owned();
 
-        if name.starts_with("ttyAMA") || name.starts_with("ttyACM") || name.starts_with("ttyUSB") {
+        if name.starts_with("ttyACM") || name.starts_with("ttyUSB") {
             let mut serial = Serial::open(&format!("/dev/{name}"));
 
             serial.output("SCIP2.0");
