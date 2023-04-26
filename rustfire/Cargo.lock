@@ -78,6 +78,7 @@ dependencies = [
  "hyper",
  "hyper-tungstenite",
  "ordered-float",
+ "queue",
  "rand",
  "rand_distr",
  "rmp-serde",
@@ -397,6 +398,12 @@ checksum = "e472a104799c74b514a57226160104aa483546de37e839ec50e3c2e41dd87534"
 dependencies = [
  "unicode-ident",
 ]
+
+[[package]]
+name = "queue"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ff7e7fd62294a081720771513c1c1c995468a5d4e771a2928e423b88682ce48"
 
 [[package]]
 name = "quote"

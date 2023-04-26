@@ -101,7 +101,7 @@ impl DivAssign<f32> for Vec2 {
 }
 
 /// A 2D point.
-#[derive(Clone, Copy, Debug, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Serialize)]
 pub struct Point {
     pub x: f32,
     pub y: f32,

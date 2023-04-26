@@ -85,4 +85,5 @@ pub struct State {
     pub walls: Vec<Line>,
     pub robot: Transform,
     pub cost: f32,
+    pub target: Option<Point>,
 }

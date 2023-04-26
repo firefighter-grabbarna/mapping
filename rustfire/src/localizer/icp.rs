@@ -47,31 +47,20 @@ fn update_position(
     points: &[Point],
     map: &Map,
 ) -> (Option<Transform>, f32) {
-    // Normal case, update the last position.
-    if let Some(pos) = last_pos {
-        let before = std::time::Instant::now();
-
-        let pos = converge(pos, points, map);
-
-        dbg!(before.elapsed());
-
-        // Keep the result if it is good enough.
-        let cost = cost(pos, points, map);
-        if cost < 30.0 {
-            return (Some(pos), cost);
-        }
-    }
-
-    // Desync case, perform a full search.
-    let pos = full_search(points, map);
+    let pos = match last_pos {
+        // Normal case, update the last position.
+        Some(last_pos) => converge(last_pos, points, map),
+        // Desync case, perform a full search.
+        None => full_search(points, map),
+    };
 
     // Keep the result if it is good enough.
     let cost = cost(pos, points, map);
     if cost < 30.0 {
-        return (Some(pos), cost);
+        (Some(pos), cost)
+    } else {
+        (None, cost)
     }
-
-    (None, cost)
 }
 
 // Performs a single ICP step.

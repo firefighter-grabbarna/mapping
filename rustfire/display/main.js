@@ -30,6 +30,12 @@ connect((state) => {
     } = state.robot;
     let robot = `translate(${rx} ${ry}) rotate(${(r * 180) / Math.PI})`;
 
+    let target = null;
+    if (state.target) {
+        let { x: tx, y: ty } = state.target;
+        target = `translate(${tx} ${ty})`;
+    }
+
     redraw(
         viewBox,
         <g transform={flip} stroke-linecap="round" stroke-linejoin="round">
@@ -47,6 +53,11 @@ connect((state) => {
                 <circle x={0} y={0} r={120} fill="#fff3" />
                 <path d="M0-80V80L-30 50M0 80L30 50" fill="none" />
             </g>
+            {target && (
+                <g transform={target} stroke="#cc0" stroke-width={10}>
+                    <circle x={0} y={0} r={50} fill="#ff03" />
+                </g>
+            )}
         </g>,
         <text
             x={state.view_box[0]}

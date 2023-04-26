@@ -70,6 +70,9 @@ impl Urg {
     }
 }
 
+/// Offset from the center of the robot to the lidar.
+const LIDAR_OFFSET: Vec2 = Vec2::new(0.0, 75.0);
+
 /// Connects to a real lidar at the specified serial port.
 pub fn real_lidar(serial: Serial) -> Lidar {
     Lidar::from_handler(move |channel| {
@@ -85,7 +88,7 @@ pub fn real_lidar(serial: Serial) -> Lidar {
                     let angle = Radians(fraction * std::f32::consts::PI * 2.0);
 
                     let direction = Vec2::new(0.0, -1.0).rotate(angle);
-                    points.push((direction * d as f32).point());
+                    points.push((direction * d as f32).point() + LIDAR_OFFSET);
                 }
             }
 

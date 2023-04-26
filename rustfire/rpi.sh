@@ -7,7 +7,7 @@ DEVICE="enp1s0"
 #ADDR="fe80::bef4:5354:913b:fd01%$DEVICE" #rpi 2
 #ADDR="fe80::3545:8d5:24f3:fe87%$DEVICE" #rpi 4 (old)
 ADDR_ETH="fe80::abf6:20e3:c24d:2463%$DEVICE" #rpi 4 (new)
-ADDR_WIFI="10.255.193.193" #rpi 4 (new)
+ADDR_WIFI="10.255.197.188" #rpi 4 (new)
 
 function copy {
     rsync -rcpv --exclude={.git,breezyslam,build,data,resurser,src/canon,src/motor} \
@@ -28,18 +28,24 @@ ifconfig)
     ssh -Xt "pi@$ADDR_ETH" "sudo ifconfig | grep -n1 'wlan0' | tail -n 1 | awk '{ print \$3 }'"
     ;;
 compile)
+    ./x.sh build-js
     cargo build --release --target armv7-unknown-linux-gnueabihf --bin robot || exit
     scp target/armv7-unknown-linux-gnueabihf/release/robot "pi@[$ADDR_WIFI]":firefighter-grabbarna
+    connect "RUST_BACKTRACE=1 firefighter-grabbarna/robot"
     ;;
 run)
-    connect "firefighter-grabbarna/robot"
+    connect "RUST_BACKTRACE=1 firefighter-grabbarna/robot"
     ;;
 
 # copy)
 #     copy
 #     ;;
+eth-ssh)
+    ssh -Xt "pi@$ADDR_ETH" 
+    ;;
 ssh)
     connect "cd firefighter-grabbarna; bash"
+    
     ;;
 # run)
 #     copy

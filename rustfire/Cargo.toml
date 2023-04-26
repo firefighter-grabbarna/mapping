@@ -8,6 +8,7 @@ futures-util = "0.3.21"
 hyper = { version = "0.14.20", features = ["tcp", "http1", "server"] }
 hyper-tungstenite = "0.8.1"
 ordered-float = "3.0.0"
+queue = "0.3.1"
 rand = "0.8.5"
 rand_distr = "0.4.3"
 rmp-serde = "1.1.0"
