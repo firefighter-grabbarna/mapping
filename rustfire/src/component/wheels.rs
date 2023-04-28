@@ -1,4 +1,4 @@
-use std::sync::mpsc::{Sender, channel, RecvTimeoutError};
+use std::sync::mpsc::{channel, RecvTimeoutError, Sender};
 use std::time::Duration;
 
 use super::Serial;
@@ -35,6 +35,8 @@ impl Wheels {
         let rotate = (rotate * scale) as i32;
         let slow = slow as i32;
 
-        _ = self.channel.send(format!("{forward} {right} {rotate} {slow}"));
+        _ = self
+            .channel
+            .send(format!("{forward} {right} {rotate} {slow}"));
     }
 }

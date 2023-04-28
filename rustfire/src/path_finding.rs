@@ -6,12 +6,14 @@ use queue::*;
 
 use crate::math::{Point, Radians};
 
-pub const ROOM_SEARCH_ORDER: [[NodeIndex; 3]; 4] = [
-    [NodeIndex::S3, NodeIndex::S2, NodeIndex::S1], //room0
-    [NodeIndex::S2, NodeIndex::S3, NodeIndex::S0], //room1
-    [NodeIndex::S1, NodeIndex::S3, NodeIndex::S0], //room2
-    [NodeIndex::S0, NodeIndex::S2, NodeIndex::S1], //room3
+pub const ROOM_SEARCH_ORDER: &[&[NodeIndex]] = &[
+    &[NodeIndex::S3, NodeIndex::S2, NodeIndex::S1], //room0
+    &[NodeIndex::S2, NodeIndex::S3, NodeIndex::S0], //room1
+    &[NodeIndex::S1, NodeIndex::S3, NodeIndex::S0], //room2
+    &[NodeIndex::S0, NodeIndex::S2, NodeIndex::S1], //room3
 ];
+pub const ALL_ROOMS_ORDER: &[NodeIndex] =
+    &[NodeIndex::S2, NodeIndex::S1, NodeIndex::S3, NodeIndex::S0];
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum NodeIndex {
@@ -268,7 +270,6 @@ impl NodeMap {
 
         println!("start_node = {:?}, end_node = {:?}", start_node, end_node);
         while !processing_queue.is_empty() {
-            //println!("len of the queue = {}", processing_queue.len());
             let current_node = processing_queue.dequeue().unwrap();
             if current_node == end_node {
                 self.recreate_path(start_node, end_node, &mut path);
@@ -314,8 +315,8 @@ impl NodeMap {
         }
     }
 
-    pub fn scan_room_path(&mut self, x: f32, y: f32, room: NodeIndex) -> Vec<PathPoint> {
-        let current_node = self.get_current_node(x, y).unwrap();
+    pub fn scan_room_path(&mut self, x: f32, y: f32, room: NodeIndex) -> Option<Vec<PathPoint>> {
+        let current_node = self.get_current_node(x, y)?;
         let path = self.get_path(current_node, room);
 
         println!("scan path with {path:?}");
@@ -328,20 +329,15 @@ impl NodeMap {
             })
             .collect();
 
-        points.insert(
-            0,
-            PathPoint::new(Point::new(x, y), ScanSettings::NoScan, Radians::default()),
-        );
-
         let len = points.len();
         points[len - 2].scan_settings = ScanSettings::Scan;
         points[len - 1].scan_settings = ScanSettings::Scan;
 
-        points
+        Some(points)
     }
 
-    pub fn return_path(&mut self, x: f32, y: f32) -> Vec<PathPoint> {
-        let current_node = self.get_current_node(x, y).unwrap();
+    pub fn return_path(&mut self, x: f32, y: f32) -> Option<Vec<PathPoint>> {
+        let current_node = self.get_current_node(x, y)?;
         let start_room = self.get_current_node(self.start_x, self.start_y).unwrap();
         let path = self.get_path(current_node, start_room);
 
@@ -355,18 +351,13 @@ impl NodeMap {
             })
             .collect();
 
-        points.insert(
-            0,
-            PathPoint::new(Point::new(x, y), ScanSettings::NoScan, Radians::default()),
-        );
-
         points.push(PathPoint::new(
             Point::new(self.start_x, self.start_y),
             ScanSettings::Done,
             Radians::default(),
         ));
 
-        points
+        Some(points)
     }
 
     // pub fn go_home(&mut self) {

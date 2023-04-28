@@ -1,9 +1,11 @@
 use std::time::Duration;
 
-use firefighter::component::{find_components, Wheels, Cameras, State};
+use firefighter::component::{find_components, Cameras, State, Wheels};
 use firefighter::localizer::{icp_localizer, Localizer};
-use firefighter::math::{Line, Point, Transform, Vec2, Radians};
-use firefighter::path_finding::{NodeMap, PathPoint, ROOM_SEARCH_ORDER, ScanSettings};
+use firefighter::math::{Line, Point, Radians, Transform, Vec2};
+use firefighter::path_finding::{
+    NodeMap, PathPoint, ScanSettings, ALL_ROOMS_ORDER, ROOM_SEARCH_ORDER,
+};
 use firefighter::{Display, Map};
 
 struct Robot {
@@ -65,8 +67,6 @@ impl Robot {
 
     /// Drives along a line. Returns true if the end has been passed.
     fn drive_along(&mut self, position: Transform, line: Line) -> bool {
-        #![allow(clippy::let_and_return)]
-
         let robot_pos = position.offset.point();
 
         // Get the closest point on the line.
@@ -90,6 +90,25 @@ impl Robot {
         (line.p2 - robot_pos).dot(line.p2 - line.p1) <= 0.0
     }
 
+    /// Rotates until the current position is known.
+    fn rotate_and_find_position(&mut self) -> Transform {
+        if let Some(position) = self.localizer.next_position() {
+            return position;
+        }
+
+        self.wheels.set_speed(0.0, 0.0, 0.3, true);
+
+        let position = loop {
+            if let Some(position) = self.localizer.next_position() {
+                break position;
+            }
+        };
+
+        self.wheels.set_speed(0.0, 0.0, 0.0, false);
+
+        position
+    }
+
     fn scan_room(&mut self, angle: Radians) -> FollowResult {
         // Rotate to the right angle.
         println!("Rotating to angle");
@@ -98,7 +117,7 @@ impl Robot {
                 Some(position) => match self.rotate_to(position, angle) {
                     true => break,
                     false => continue,
-                }
+                },
                 None => return FollowResult::Failed,
             }
         }
@@ -110,7 +129,6 @@ impl Robot {
             self.wheels.set_speed(0.0, 0.0, 0.0, false);
             std::thread::sleep(Duration::from_secs(1));
             self.cameras.set_state(State::Search);
-
 
             loop {
                 let state = self.cameras.get_state();
@@ -161,7 +179,6 @@ impl Robot {
                 tried_extinguish = true;
             }
         }
-
     }
 
     fn follow_path(&mut self, path: Vec<PathPoint>) -> FollowResult {
@@ -181,6 +198,9 @@ impl Robot {
                     return FollowResult::Failed;
                 };
 
+                // Ping the cameras to detect stop
+                self.cameras.get_state();
+
                 if self.drive_along(position, line) {
                     break;
                 }
@@ -195,56 +215,54 @@ impl Robot {
                     return result;
                 }
             }
-
         }
 
         FollowResult::Done
     }
 
     fn run_route(&mut self) {
+        // To do: Figure out why it doesn't work.
         while self.cameras.get_state() == State::Startup {
             std::thread::sleep(Duration::from_millis(100));
         }
         std::thread::sleep(Duration::from_secs(2));
 
+        // Create the map with the current position as starting position.
+        let mut node_map;
+        let start_room;
+        loop {
+            let position = self.rotate_and_find_position();
 
-        self.wheels.set_speed(0.0, 0.0, 0.0, false);
-        let mut rotating = false;
-
-        let mut node_map = loop {
-            if let Some(point) = self.localizer.next_position() {
-                break NodeMap::new(point.offset.x, point.offset.y);
-            } else if !rotating {
-                self.wheels.set_speed(0.0, 0.0, 0.3, true);
-                rotating = true;
+            node_map = NodeMap::new(position.offset.x, position.offset.y);
+            if let Some(node) = node_map.get_current_node(node_map.start_x, node_map.start_y) {
+                start_room = node;
+                break;
             }
-        };
 
-        self.wheels.set_speed(0.0, 0.0, 0.0, false);
-        rotating = false;
-
-        let start_room = node_map
-            .get_current_node(node_map.start_x, node_map.start_y)
-            .expect("unknown start room");
+            self.wheels.set_speed(0.0, 0.0, 0.3, true);
+            std::thread::sleep(Duration::from_secs(1));
+        }
 
         println!("start room is {start_room:?}");
 
-        let order = ROOM_SEARCH_ORDER[start_room as usize];
+        let order = ROOM_SEARCH_ORDER
+            .get(start_room as usize)
+            .copied()
+            .unwrap_or(ALL_ROOMS_ORDER);
         let mut target_idx = 0;
 
         loop {
-            let Some(position) = self.localizer.next_position() else {
-                if !rotating {
-                    self.wheels.set_speed(0.0, 0.0, 0.3, true);
-                    rotating = true;
-                }
+            let position = self.rotate_and_find_position();
+            let target = order[target_idx];
+
+            println!("starting new path to {target:?}");
+
+            let Some(path) = node_map.scan_room_path(position.offset.x, position.offset.y, target)
+            else {
+                self.wheels.set_speed(0.0, 0.0, 0.3, true);
+                std::thread::sleep(Duration::from_secs(1));
                 continue;
             };
-
-            println!("starting new path");
-
-            let path =
-                node_map.scan_room_path(position.offset.x, position.offset.y, order[target_idx]);
 
             match self.follow_path(path) {
                 FollowResult::Done => {

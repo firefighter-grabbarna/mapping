@@ -8,6 +8,7 @@ pub struct Serial {
 }
 
 impl Serial {
+    #[track_caller]
     pub fn open(path: &str) -> Self {
         let mut port = SerialPort::open(path, 115200).unwrap();
         port.set_read_timeout(Duration::from_millis(1000)).unwrap();
@@ -20,6 +21,7 @@ impl Serial {
             port: BufReader::new(port),
         }
     }
+    #[track_caller]
     pub fn output(&mut self, value: &str) {
         // while let Ok(n) = self.port.read(&mut [0; 64]) {
         //     dbg!(n);
@@ -29,6 +31,7 @@ impl Serial {
         writeln!(self.port.get_mut(), "{value}").unwrap();
         self.port.get_mut().flush().unwrap();
     }
+    #[track_caller]
     pub fn input(&mut self) -> String {
         let mut buf = Vec::new();
 
@@ -46,6 +49,7 @@ impl Serial {
         }
         String::from_utf8(buf).unwrap()
     }
+    #[track_caller]
     pub fn input_no_block(&mut self) -> Option<String> {
         let mut buf = String::new();
         match self.port.read_line(&mut buf) {
@@ -57,6 +61,7 @@ impl Serial {
             Err(err) => panic!("{err}"),
         }
     }
+    #[track_caller]
     pub fn query(&mut self, query: &str) -> Vec<String> {
         self.output(query);
         let mut lines = Vec::new();
