@@ -28,6 +28,10 @@ pub fn find_components() -> ComponentList {
                     println!("cameras connected");
                     components.cameras = Some(Cameras::new(serial));
                 }
+                s if s.contains(',') => {
+                    println!("cameras connected");
+                    components.cameras = Some(Cameras::new(serial));
+                }
                 "MOTOR" => {
                     println!("wheels connected");
                     components.wheels = Some(Wheels::new(serial));

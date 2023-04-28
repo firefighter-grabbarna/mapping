@@ -9,7 +9,7 @@ use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 
 use crate::math::Point;
 
-pub use self::cameras::Cameras;
+pub use self::cameras::{Cameras, State};
 pub use self::find::find_components;
 pub use self::real_lidar::real_lidar;
 pub use self::serial::Serial;

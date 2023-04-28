@@ -1,14 +1,27 @@
+use std::sync::mpsc::{Sender, channel, RecvTimeoutError};
+use std::time::Duration;
+
 use super::Serial;
 
 /// Communication with the wheels.
 pub struct Wheels {
-    serial: Serial,
+    channel: Sender<String>,
 }
 
 impl Wheels {
     /// Connects to the wheels.
-    pub fn new(serial: Serial) -> Self {
-        Wheels { serial }
+    pub fn new(mut serial: Serial) -> Self {
+        let (send, recv) = channel::<String>();
+
+        std::thread::spawn(move || loop {
+            match recv.recv_timeout(Duration::from_millis(250)) {
+                Ok(msg) => serial.output(&msg),
+                Err(RecvTimeoutError::Timeout) => serial.output("PING"),
+                Err(RecvTimeoutError::Disconnected) => break,
+            }
+        });
+
+        Wheels { channel: send }
     }
 
     /// Sets the speed in the directions. `1.0` is max speed.
@@ -22,7 +35,6 @@ impl Wheels {
         let rotate = (rotate * scale) as i32;
         let slow = slow as i32;
 
-        self.serial
-            .output(&format!("{forward} {right} {rotate} {slow}"));
+        _ = self.channel.send(format!("{forward} {right} {rotate} {slow}"));
     }
 }

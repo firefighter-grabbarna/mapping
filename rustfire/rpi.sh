@@ -27,7 +27,7 @@ network)
 ifconfig)
     ssh -Xt "pi@$ADDR_ETH" "sudo ifconfig | grep -n1 'wlan0' | tail -n 1 | awk '{ print \$3 }'"
     ;;
-compile)
+build-run)
     ./x.sh build-js
     cargo build --release --target armv7-unknown-linux-gnueabihf --bin robot || exit
     scp target/armv7-unknown-linux-gnueabihf/release/robot "pi@[$ADDR_WIFI]":firefighter-grabbarna
@@ -36,10 +36,6 @@ compile)
 run)
     connect "RUST_BACKTRACE=1 firefighter-grabbarna/robot"
     ;;
-
-# copy)
-#     copy
-#     ;;
 eth-ssh)
     ssh -Xt "pi@$ADDR_ETH" 
     ;;
@@ -47,17 +43,6 @@ ssh)
     connect "cd firefighter-grabbarna; bash"
     
     ;;
-# run)
-#     copy
-#     connect "firefighter-grabbarna/run-robot.sh"
-#     ;;
-# start)
-#     copy
-#     connect "firefighter-grabbarna/bg-start.sh"
-#     ;;
-# stop)
-#     connect "firefighter-grabbarna/bg-stop.sh"
-#     ;;
 *)
     echo "Usage:"
     echo "$0 date   Sets the date to the current date"
