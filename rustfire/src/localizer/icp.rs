@@ -49,7 +49,7 @@ fn update_position(
 ) -> (Option<Transform>, f32) {
     let pos = match last_pos {
         // Normal case, update the last position.
-        Some(last_pos) => converge(last_pos, points, map),
+        Some(last_pos) => near_search(last_pos, points, map),
         // Desync case, perform a full search.
         None => full_search(points, map),
     };
@@ -117,6 +117,38 @@ pub fn converge(mut guessed_pos: Transform, points: &[Point], map: &Map) -> Tran
         }
         return guessed_pos;
     }
+}
+
+/// Searces many random positions to find a guess.
+fn near_search(prev_pos: Transform, points: &[Point], map: &Map) -> Transform {
+    // Range to generate random positions in.
+    let mut rng = rand::thread_rng();
+
+    let mut random_pos = || {
+        let a = rng.gen_range(prev_pos.rotation.0 - 1.0..=prev_pos.rotation.0 + 1.0);
+        let x = rng.gen_range(prev_pos.offset.x - 100.0..=prev_pos.offset.x + 100.0);
+        let y = rng.gen_range(prev_pos.offset.y - 100.0..=prev_pos.offset.y + 100.0);
+        Transform::new(Radians(a), Vec2::new(x, y))
+    };
+
+    let mut candidates: Vec<_> = (0..1024).map(|_| (random_pos(), 0.0)).collect();
+
+    while candidates.len() > 4 {
+        let step_size = (points.len() * 4 / candidates.len()).max(10);
+        let points: Vec<_> = points.iter().copied().step_by(step_size).collect();
+
+        for (cand_pos, cand_cost) in &mut candidates {
+            for _ in 0..4 {
+                *cand_pos = step(*cand_pos, &points, map);
+            }
+            *cand_cost = cost(*cand_pos, &points, map);
+        }
+
+        candidates.sort_unstable_by_key(|&(_, cost)| OrderedFloat(cost));
+        candidates.truncate(candidates.len() / 2);
+    }
+
+    converge(candidates[0].0, points, map)
 }
 
 /// Searces many random positions to find a guess.

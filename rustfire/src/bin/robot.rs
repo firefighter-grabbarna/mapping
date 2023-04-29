@@ -1,3 +1,5 @@
+// #![allow(dead_code)]
+
 use std::time::Duration;
 
 use firefighter::component::{find_components, Cameras, State, Wheels};
@@ -17,15 +19,14 @@ struct Robot {
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
-enum FollowResult {
-    Failed,
-    Done,
+enum RobotErr {
+    Lost,
     Extinguished,
 }
 
 impl Robot {
     /// Drives in a straight line to the target. Avoids walls.
-    fn drive_vector(&mut self, position: Transform, velocity: Vec2, rot_vel: f32, slow: bool) {
+    fn drive_vector(&mut self, position: Transform, velocity: Vec2, rot_vel: f32) {
         const FORCE_START: f32 = 12.0;
         const FORCE_END: f32 = 20.0;
 
@@ -46,23 +47,39 @@ impl Robot {
         let forward = velocity.dot(forward_hat);
         let right = velocity.dot(right_hat);
 
-        self.wheels.set_speed(forward, right, rot_vel, slow);
+        self.wheels.set_speed(forward, right, rot_vel);
     }
 
     /// Rotates to the angle.
-    fn rotate_to(&mut self, position: Transform, angle: Radians) -> bool {
-        let difference = (angle - position.rotation).wrapped();
+    fn rotate_to(&mut self, angle: Radians) {
+        const STOP_OFFSET: Radians = Radians(-60.0 * (std::f32::consts::PI / 180.0));
 
-        if difference.abs() < 10_f32.to_radians() {
-            self.wheels.set_speed(0.0, 0.0, 0.0, false);
-            true
-        } else if difference > 0.0 {
-            self.wheels.set_speed(0.0, 0.0, 0.3, true);
-            false
-        } else {
-            self.wheels.set_speed(0.0, 0.0, -0.3, true);
-            false
+        self.wheels.set_speed(0.0, 0.0, 0.5);
+        std::thread::sleep(Duration::from_secs(1));
+
+        let start_angle = loop {
+            if let Some(pos) = self.localizer.next_position() {
+                break pos.rotation;
+            }
+        };
+
+        let target = angle + STOP_OFFSET;
+
+        let mut last_angle = start_angle;
+        loop {
+            let Some(pos) = self.localizer.next_position() else { continue };
+            let new_angle = pos.rotation;
+
+            let new_delta = (new_angle - target).wrapped();
+            let last_delta = (last_angle - target).wrapped();
+            if new_delta >= 0.0 && last_delta <= 0.0 {
+                break;
+            }
+
+            last_angle = new_angle;
         }
+        self.wheels.set_speed(0.0, 0.0, 0.0);
+        std::thread::sleep(Duration::from_secs(1));
     }
 
     /// Drives along a line. Returns true if the end has been passed.
@@ -84,7 +101,7 @@ impl Robot {
         let direction = direction.normalize();
 
         // Move in the determined direction.
-        self.drive_vector(position, direction, 0.0, false);
+        self.drive_vector(position, direction, 0.0);
 
         // Test if the robot has passed the end of the line.
         (line.p2 - robot_pos).dot(line.p2 - line.p1) <= 0.0
@@ -96,7 +113,7 @@ impl Robot {
             return position;
         }
 
-        self.wheels.set_speed(0.0, 0.0, 0.3, true);
+        self.wheels.set_speed(0.0, 0.0, 0.5);
 
         let position = loop {
             if let Some(position) = self.localizer.next_position() {
@@ -104,84 +121,120 @@ impl Robot {
             }
         };
 
-        self.wheels.set_speed(0.0, 0.0, 0.0, false);
+        self.wheels.set_speed(0.0, 0.0, 0.0);
 
         position
     }
 
-    fn scan_room(&mut self, angle: Radians) -> FollowResult {
-        // Rotate to the right angle.
-        println!("Rotating to angle");
+    /// Spins around to find the fire. Faces the fire if it was found.
+    fn spin_scan(&mut self, target_angle: Radians) -> Result<bool, RobotErr> {
+        const STOP_OFFSET: Radians = Radians(45.0 * (std::f32::consts::PI / 180.0));
+
+        // Rotate so the back faces the room
+        println!("rotating");
+        self.rotate_to(target_angle + Radians::from_degrees(180.0));
+
+        // Start rotating
+        println!("scanning");
+        self.wheels.set_speed(0.0, 0.0, 0.5);
+
+        let mut first_half = true;
+
+        let fire_angle;
+
         loop {
-            match self.localizer.next_position() {
-                Some(position) => match self.rotate_to(position, angle) {
-                    true => break,
-                    false => continue,
-                },
-                None => return FollowResult::Failed,
+            let Some(pos) = self.localizer.next_position() else { continue };
+            let new_angle = pos.rotation;
+
+            // Keep track of the full rotation
+            let fw_delta = (new_angle - target_angle).wrapped();
+            if first_half && fw_delta.abs() < 30_f32.to_radians() {
+                first_half = false;
             }
-        }
-
-        let mut tried_extinguish = false;
-        loop {
-            // Perform a scan.
-            println!("Starting scan");
-            self.wheels.set_speed(0.0, 0.0, 0.0, false);
-            std::thread::sleep(Duration::from_secs(1));
-            self.cameras.set_state(State::Search);
-
-            loop {
-                let state = self.cameras.get_state();
-                match state {
-                    State::Query => continue,
-                    State::Idle => {
-                        println!("Not found");
-                        if tried_extinguish {
-                            return FollowResult::Extinguished;
-                        } else {
-                            return FollowResult::Done;
-                        }
-                    }
-                    State::Search => std::thread::sleep(Duration::from_millis(100)),
-                    _ => break,
-                }
+            if !first_half && fw_delta.abs() > (180_f32 - 30_f32).to_radians() {
+                // not found after a rotation, exiting
+                self.wheels.set_speed(0.0, 0.0, 0.0);
+                return Ok(false);
             }
 
-            println!("Following light to angle");
-
-            // Follow for as long as possible.
-            loop {
-                let Some(position) = self.localizer.next_position() else {
-                    return FollowResult::Failed;
-                };
-
-                let state = self.cameras.get_state();
-                if let State::Follow(x, y) = state {
-                    let slope = x as f32 / y as f32;
-
-                    let mut rot_speed = -slope * 1.0;
-                    if rot_speed.abs() > 0.2 {
-                        rot_speed = 0.2 * rot_speed.signum();
-                    }
-
-                    let fw_speed = 0.2 - rot_speed.abs();
-
-                    let forward = Vec2::new(0.0, 1.0).rotate(position.rotation);
-                    self.drive_vector(position, forward * fw_speed, rot_speed, true);
-                } else if state != State::Query {
+            // See if we have passed the fire.
+            if let (_, Some(th1), Some(th2)) = self.cameras.get_state() {
+                if (th1.0 + th2.0) / 2.0 > 0.0 {
+                    // Fire passed, store the angle
+                    // To do: Magic constant?
+                    fire_angle = new_angle + STOP_OFFSET;
                     break;
                 }
             }
-
-            // Wait for extinguish to finish.
-            while self.cameras.get_state() == State::Extinguish {
-                std::thread::sleep(Duration::from_millis(100));
-                tried_extinguish = true;
-            }
         }
+
+        println!("rotating");
+        dbg!(fire_angle);
+        self.rotate_to(fire_angle);
+
+        self.cameras.set_state(State::Music);
+
+        Ok(true)
     }
 
-    fn follow_path(&mut self, path: Vec<PathPoint>) -> FollowResult {
+    /// Drives slowly towards the fire.
+    fn follow_and_extinguish(&mut self) -> Result<(), RobotErr> {
+        const TURN_FACTOR: f32 = 1.0;
+        const STOP_WEDGE: f32 = 35_f32 * (std::f32::consts::PI / 180.0);
+
+        let found = loop {
+            let (_, th_l, th_r) = self.cameras.get_state();
+
+            match (th_l, th_r) {
+                (None, None) => {
+                    println!("fire lost");
+                    break false;
+                }
+                (Some(angle), None) | (None, Some(angle)) => {
+                    let rot_speed = if angle.0 > 0.0 { -0.5 } else { 0.5 };
+
+                    self.wheels.set_speed(0.0, 0.0, rot_speed);
+                }
+                (Some(th_l), Some(th_r)) => {
+                    let average = (th_l.0 + th_r.0) / 2.0;
+                    let wedge = th_l.0 - th_r.0;
+
+                    if wedge > STOP_WEDGE {
+                        println!("stopped at fire");
+                        break true;
+                    }
+
+                    let rot_speed = -average * TURN_FACTOR;
+                    let fw_speed = 0.5;
+
+                    println!("{}", wedge.to_degrees());
+
+                    self.wheels.set_speed(fw_speed, 0.0, rot_speed);
+                }
+            }
+        };
+
+        self.wheels.set_speed(0.0, 0.0, 0.0);
+
+        if !found {
+            return Ok(());
+        }
+
+        // Drive forward
+        std::thread::sleep(Duration::from_millis(1000));
+        self.wheels.set_speed(0.5, 0.0, 0.0);
+        std::thread::sleep(Duration::from_millis(650));
+        self.wheels.set_speed(0.0, 0.0, 0.0);
+        std::thread::sleep(Duration::from_millis(1000));
+
+        self.cameras.set_state(State::Extinguish);
+        _ = self.cameras.get_state();
+        std::thread::sleep(Duration::from_millis(1000));
+
+        Err(RobotErr::Extinguished)
+    }
+
+    fn follow_path(&mut self, path: Vec<PathPoint>) -> Result<(), RobotErr> {
         for window in path.windows(2) {
             let from = window[0];
             let to = window[1];
@@ -195,38 +248,40 @@ impl Robot {
             loop {
                 let Some(position) = self.localizer.next_position() else {
                     self.display.update_state(|state| state.target = None);
-                    return FollowResult::Failed;
+                    self.wheels.set_speed(0.0, 0.0, 0.0);
+                    std::thread::sleep(Duration::from_secs(1));
+                    return Err(RobotErr::Lost);
                 };
-
-                // Ping the cameras to detect stop
-                self.cameras.get_state();
 
                 if self.drive_along(position, line) {
                     break;
                 }
+
+                // Ping the cameras to detect stop
+                self.cameras.get_state();
             }
-            self.wheels.set_speed(0.0, 0.0, 0.0, false);
+            self.wheels.set_speed(0.0, 0.0, 0.0);
 
             if to.scan_settings == ScanSettings::Scan {
-                // to do: scan etc.
-
-                let result = self.scan_room(to.angle);
-                if result != FollowResult::Done {
-                    return result;
+                let found = self.spin_scan(to.angle)?;
+                if found {
+                    self.follow_and_extinguish()?;
                 }
             }
         }
 
-        FollowResult::Done
+        Ok(())
+    }
+
+    fn wait_for_button(&mut self) {
+        self.cameras.set_state(State::WaitButton);
+        while self.cameras.get_state().0 == State::WaitButton {
+            self.localizer.next_position();
+        }
+        std::thread::sleep(Duration::from_secs(2));
     }
 
     fn run_route(&mut self) {
-        // To do: Figure out why it doesn't work.
-        while self.cameras.get_state() == State::Startup {
-            std::thread::sleep(Duration::from_millis(100));
-        }
-        std::thread::sleep(Duration::from_secs(2));
-
         // Create the map with the current position as starting position.
         let mut node_map;
         let start_room;
@@ -239,7 +294,7 @@ impl Robot {
                 break;
             }
 
-            self.wheels.set_speed(0.0, 0.0, 0.3, true);
+            self.wheels.set_speed(0.0, 0.0, 0.3);
             std::thread::sleep(Duration::from_secs(1));
         }
 
@@ -259,22 +314,42 @@ impl Robot {
 
             let Some(path) = node_map.scan_room_path(position.offset.x, position.offset.y, target)
             else {
-                self.wheels.set_speed(0.0, 0.0, 0.3, true);
+                self.wheels.set_speed(0.0, 0.0, 0.5);
                 std::thread::sleep(Duration::from_secs(1));
                 continue;
             };
 
             match self.follow_path(path) {
-                FollowResult::Done => {
+                Ok(()) => {
                     target_idx = (target_idx + 1) % order.len();
                     println!("path succeeded");
                 }
-                FollowResult::Failed => {
+                Err(RobotErr::Lost) => {
                     println!("path failed");
                 }
-                FollowResult::Extinguished => {
+                Err(RobotErr::Extinguished) => {
                     break;
                 }
+            }
+        }
+
+        loop {
+            let position = self.rotate_and_find_position();
+            let target = order[target_idx];
+
+            println!("starting new path to {target:?}");
+
+            let Some(path) = node_map.return_path(position.offset.x, position.offset.y)
+            else {
+                self.wheels.set_speed(0.0, 0.0, 0.5);
+                std::thread::sleep(Duration::from_secs(1));
+                continue;
+            };
+
+            match self.follow_path(path) {
+                Ok(()) => return,
+                Err(RobotErr::Lost) => continue,
+                Err(RobotErr::Extinguished) => return,
             }
         }
     }
@@ -329,8 +404,30 @@ fn main() {
         map,
     };
 
+    let run_program = false;
+
     loop {
-        robot.run_route();
+        println!("Waiting");
+        robot.wait_for_button();
+
+        if run_program {
+            robot.run_route();
+        } else {
+            let result = robot.spin_scan(Radians::from_degrees(-90.0));
+            println!("spin: {result:?}");
+            if result == Ok(true) {
+                let result = robot.follow_and_extinguish();
+                println!("extinguish: {result:?}");
+            }
+
+            robot.wheels.set_speed(0.0, 0.0, 0.0);
+        }
+
+        // _ = dbg!(result);
+
+        // std::thread::sleep(Duration::from_secs(1_000_000_000));
+
+        // robot.run_route();
         // if let Some(position) = localizer.next_position() {
         //     let target = Point::new(2100.0, 300.0);
         //     drive_towards(position, target, &mut wheels);

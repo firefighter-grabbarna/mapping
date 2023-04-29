@@ -16,6 +16,6 @@ fn main() {
         let right = parts[1];
         let rotate = parts[2];
 
-        wheels.set_speed(forward, right, rotate, true);
+        wheels.set_speed(forward, right, rotate);
     }
 }

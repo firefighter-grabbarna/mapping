@@ -22,6 +22,10 @@ impl Serial {
         }
     }
     #[track_caller]
+    pub fn discard_input(&mut self) {
+        self.port.get_mut().discard_buffers().unwrap();
+    }
+    #[track_caller]
     pub fn output(&mut self, value: &str) {
         // while let Ok(n) = self.port.read(&mut [0; 64]) {
         //     dbg!(n);

@@ -27,8 +27,13 @@ network)
 ifconfig)
     ssh -Xt "pi@$ADDR_ETH" "sudo ifconfig | grep -n1 'wlan0' | tail -n 1 | awk '{ print \$3 }'"
     ;;
+cal)
+    cargo build --release --target armv7-unknown-linux-gnueabihf --bin calibrate || exit
+    scp target/armv7-unknown-linux-gnueabihf/release/calibrate "pi@[$ADDR_WIFI]":firefighter-grabbarna
+    connect "RUST_BACKTRACE=1 firefighter-grabbarna/calibrate"
+    ;;
 build-run)
-    ./x.sh build-js
+    #./x.sh build-js
     cargo build --release --target armv7-unknown-linux-gnueabihf --bin robot || exit
     scp target/armv7-unknown-linux-gnueabihf/release/robot "pi@[$ADDR_WIFI]":firefighter-grabbarna
     connect "RUST_BACKTRACE=1 firefighter-grabbarna/robot"
