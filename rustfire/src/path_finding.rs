@@ -7,10 +7,10 @@ use queue::*;
 use crate::math::{Point, Radians};
 
 pub const ROOM_SEARCH_ORDER: &[&[NodeIndex]] = &[
-    &[NodeIndex::S3, NodeIndex::S2, NodeIndex::S1], //room0
-    &[NodeIndex::S2, NodeIndex::S3, NodeIndex::S0], //room1
-    &[NodeIndex::S1, NodeIndex::S3, NodeIndex::S0], //room2
-    &[NodeIndex::S0, NodeIndex::S2, NodeIndex::S1], //room3
+    &[NodeIndex::S3, NodeIndex::S2, NodeIndex::S1, NodeIndex::S0], //room0
+    &[NodeIndex::S2, NodeIndex::S3, NodeIndex::S0, NodeIndex::S1], //room1
+    &[NodeIndex::S1, NodeIndex::S3, NodeIndex::S0, NodeIndex::S2], //room2
+    &[NodeIndex::S0, NodeIndex::S2, NodeIndex::S1, NodeIndex::S3], //room3
 ];
 pub const ALL_ROOMS_ORDER: &[NodeIndex] =
     &[NodeIndex::S2, NodeIndex::S1, NodeIndex::S3, NodeIndex::S0];
@@ -330,7 +330,9 @@ impl NodeMap {
             .collect();
 
         let len = points.len();
-        points[len - 2].scan_settings = ScanSettings::Scan;
+        if points.len() > 1 {
+            points[len - 2].scan_settings = ScanSettings::Scan;
+        }
         points[len - 1].scan_settings = ScanSettings::Scan;
 
         Some(points)

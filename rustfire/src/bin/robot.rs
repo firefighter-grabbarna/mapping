@@ -34,7 +34,7 @@ impl Robot {
         let closest = self.map.point_closest_to(robot_pos);
         let wall_distance = (closest - robot_pos).length();
         let factor = (wall_distance - FORCE_END) / (FORCE_START - FORCE_END);
-        let factor = factor.clamp(0.0, 1.0);
+        let factor = 0.0; //factor.clamp(0.0, 1.0);
 
         let away_from_wall = (robot_pos - closest).normalize();
         let drive_velocity = velocity.limit(1.0);
@@ -98,13 +98,21 @@ impl Robot {
         let factor = (dist_to_line / 200.0).min(1.0);
 
         let direction = towards_end + (towards_line - towards_end) * factor;
-        let direction = direction.normalize();
+        let direction = direction.normalize() * 0.7;
 
         // Move in the determined direction.
         self.drive_vector(position, direction, 0.0);
 
-        // Test if the robot has passed the end of the line.
-        (line.p2 - robot_pos).dot(line.p2 - line.p1) <= 0.0
+        let line_unit_dir = (line.p2 - line.p1).normalize();
+        let line_length = (line.p2 - line.p1).length();
+
+        let end_point = line.p1 + line_unit_dir * (line_length - 150.0);
+        (robot_pos - line.p1).dot(line_unit_dir) > (end_point - line.p1).dot(line_unit_dir)
+
+        // let 
+
+        // // Test if the robot has passed the end of the line.
+        // (line.p2 - robot_pos).dot(line.p2 - line.p1) <= 0.0
     }
 
     /// Rotates until the current position is known.
@@ -127,54 +135,111 @@ impl Robot {
     }
 
     /// Spins around to find the fire. Faces the fire if it was found.
-    fn spin_scan(&mut self, target_angle: Radians) -> Result<bool, RobotErr> {
-        const STOP_OFFSET: Radians = Radians(45.0 * (std::f32::consts::PI / 180.0));
+    fn spin_scan(&mut self, _target_angle: Radians) -> Result<bool, RobotErr> {
 
-        // Rotate so the back faces the room
-        println!("rotating");
-        self.rotate_to(target_angle + Radians::from_degrees(180.0));
+        for _ in 0..20 {
 
-        // Start rotating
-        println!("scanning");
-        self.wheels.set_speed(0.0, 0.0, 0.5);
+            self.wheels.set_speed(0.0, 0.0, 0.5);
+            std::thread::sleep(Duration::from_millis(500));
+            self.wheels.set_speed(0.0, 0.0, 0.0);
+            std::thread::sleep(Duration::from_millis(500));
 
-        let mut first_half = true;
 
-        let fire_angle;
+            let angle = match self.cameras.get_state() {
+                (_, Some(a1), Some(a2)) => (a1.0 + a2.0) / 2.0,
+                (_, Some(a1), None) => a1.0,
+                (_, None, Some(a2)) => a2.0,
+                _ => continue,
+            };
 
-        loop {
-            let Some(pos) = self.localizer.next_position() else { continue };
-            let new_angle = pos.rotation;
+            self.cameras.set_state(State::Music);
 
-            // Keep track of the full rotation
-            let fw_delta = (new_angle - target_angle).wrapped();
-            if first_half && fw_delta.abs() < 30_f32.to_radians() {
-                first_half = false;
-            }
-            if !first_half && fw_delta.abs() > (180_f32 - 30_f32).to_radians() {
-                // not found after a rotation, exiting
-                self.wheels.set_speed(0.0, 0.0, 0.0);
-                return Ok(false);
-            }
+            return Ok(true);
 
-            // See if we have passed the fire.
-            if let (_, Some(th1), Some(th2)) = self.cameras.get_state() {
-                if (th1.0 + th2.0) / 2.0 > 0.0 {
-                    // Fire passed, store the angle
-                    // To do: Magic constant?
-                    fire_angle = new_angle + STOP_OFFSET;
-                    break;
-                }
-            }
+            // self.localizer.next_position();
+            // self.localizer.next_position();
+            // self.localizer.next_position();
+            // for _ in 0..10 {
+            //     if let Some(_pos) = self.localizer.next_position() {
+            //         //let target_angle = pos.rotation - Radians(angle);
+
+            //         self.cameras.set_state(State::Music);
+
+            //         return Ok(true);
+            //     }
+            // }
+
+
+            // // See if we have passed the fire.
+            // if let (_, Some(_th1), Some(_th2)) = self.cameras.get_state() {
+                
+
+            //     self.cameras.set_state(State::Music);
+
+            //     self.localizer.next_position();
+            //     return Ok(true);
+
+            //     // if (th1.0 + th2.0) / 2.0 > 0.0 {
+            //     //     // Fire passed, store the angle
+            //     //     // To do: Magic constant?
+            //     //     fire_angle = new_angle + STOP_OFFSET;
+            //     //     break;
+            //     // }
+            // }
+
+
         }
 
-        println!("rotating");
-        dbg!(fire_angle);
-        self.rotate_to(fire_angle);
+        Ok(false)
 
-        self.cameras.set_state(State::Music);
 
-        Ok(true)
+        // const STOP_OFFSET: Radians = Radians(45.0 * (std::f32::consts::PI / 180.0));
+
+        // // Rotate so the back faces the room
+        // println!("rotating");
+        // self.rotate_to(target_angle + Radians::from_degrees(180.0));
+
+        // // Start rotating
+        // println!("scanning");
+        // self.wheels.set_speed(0.0, 0.0, 0.5);
+
+        // let mut first_half = true;
+
+        // let fire_angle;
+
+        // loop {
+        //     let Some(pos) = self.localizer.next_position() else { continue };
+        //     let new_angle = pos.rotation;
+
+        //     // Keep track of the full rotation
+        //     let fw_delta = (new_angle - target_angle).wrapped();
+        //     if first_half && fw_delta.abs() < 30_f32.to_radians() {
+        //         first_half = false;
+        //     }
+        //     if !first_half && fw_delta.abs() > (180_f32 - 30_f32).to_radians() {
+        //         // not found after a rotation, exiting
+        //         self.wheels.set_speed(0.0, 0.0, 0.0);
+        //         return Ok(false);
+        //     }
+
+        //     // See if we have passed the fire.
+        //     if let (_, Some(th1), Some(th2)) = self.cameras.get_state() {
+        //         if (th1.0 + th2.0) / 2.0 > 0.0 {
+        //             // Fire passed, store the angle
+        //             // To do: Magic constant?
+        //             fire_angle = new_angle + STOP_OFFSET;
+        //             break;
+        //         }
+        //     }
+        // }
+
+        // println!("rotating");
+        // dbg!(fire_angle);
+        // self.rotate_to(fire_angle);
+
+        // self.cameras.set_state(State::Music);
+
+        // Ok(true)
     }
 
     /// Drives slowly towards the fire.
@@ -257,8 +322,8 @@ impl Robot {
                     break;
                 }
 
-                // Ping the cameras to detect stop
-                self.cameras.get_state();
+                // // Ping the cameras to detect stop
+                // self.cameras.get_state();
             }
             self.wheels.set_speed(0.0, 0.0, 0.0);
 
@@ -404,7 +469,7 @@ fn main() {
         map,
     };
 
-    let run_program = false;
+    let run_program = true;
 
     loop {
         println!("Waiting");

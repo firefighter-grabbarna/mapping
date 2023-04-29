@@ -125,9 +125,9 @@ fn near_search(prev_pos: Transform, points: &[Point], map: &Map) -> Transform {
     let mut rng = rand::thread_rng();
 
     let mut random_pos = || {
-        let a = rng.gen_range(prev_pos.rotation.0 - 1.0..=prev_pos.rotation.0 + 1.0);
-        let x = rng.gen_range(prev_pos.offset.x - 100.0..=prev_pos.offset.x + 100.0);
-        let y = rng.gen_range(prev_pos.offset.y - 100.0..=prev_pos.offset.y + 100.0);
+        let a = rng.gen_range(prev_pos.rotation.0 - 0.5..=prev_pos.rotation.0 + 0.5);
+        let x = rng.gen_range(prev_pos.offset.x - 50.0..=prev_pos.offset.x + 50.0);
+        let y = rng.gen_range(prev_pos.offset.y - 50.0..=prev_pos.offset.y + 50.0);
         Transform::new(Radians(a), Vec2::new(x, y))
     };
 
